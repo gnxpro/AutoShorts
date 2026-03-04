@@ -1,0 +1,13 @@
+venv/
+.venv/
+assets/ffmpeg/
+release/
+dist/
+build/
+outputs/
+temp*/
+.env
+*.exe
+*.dll
+*.zip
+*.7z

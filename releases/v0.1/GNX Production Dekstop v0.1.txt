@@ -1,5 +1,0 @@
-Initial desktop release.
-
-• GNX Production Workspace
-• Desktop workflow system
-• Windows installer

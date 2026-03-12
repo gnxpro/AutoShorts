@@ -225,6 +225,22 @@ and scalable publishing pipelines.
 Download for Windows
 </a>
 
+<script>
+
+fetch("releases/version.json")
+.then(response => response.json())
+.then(data => {
+
+const btn = document.getElementById("downloadBtn");
+
+if(btn){
+btn.href = data.download_url;
+}
+
+});
+
+</script>
+
 <a class="btn secondary" href="download.html">
 Download Page
 </a>

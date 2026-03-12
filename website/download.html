@@ -105,6 +105,22 @@ opacity:0.65;
 Download Installer
 </a>
 
+<script>
+
+fetch("releases/version.json")
+.then(response => response.json())
+.then(data => {
+
+const btn = document.getElementById("downloadBtn");
+
+if(btn){
+btn.href = data.download_url;
+}
+
+});
+
+</script>
+
 <br>
 
 <a class="back" href="index.html">← Back to Home</a>

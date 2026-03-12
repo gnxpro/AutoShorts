@@ -3,11 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>GNX Production</title>
 
 <style>
-
 *{
 margin:0;
 padding:0;
@@ -36,6 +34,8 @@ nav{
 display:flex;
 justify-content:space-between;
 align-items:center;
+flex-wrap:wrap;
+gap:12px;
 }
 
 .logo{
@@ -56,6 +56,10 @@ font-size:14px;
 opacity:0.8;
 }
 
+nav a:hover{
+opacity:1;
+}
+
 .hero{
 padding:100px 0;
 text-align:center;
@@ -67,7 +71,7 @@ margin-bottom:15px;
 }
 
 .hero p{
-max-width:700px;
+max-width:760px;
 margin:auto;
 opacity:0.8;
 font-size:18px;
@@ -84,6 +88,7 @@ text-decoration:none;
 margin:8px;
 display:inline-block;
 font-weight:bold;
+transition:0.2s ease;
 }
 
 .primary{
@@ -91,9 +96,17 @@ background:#ff4d4d;
 color:white;
 }
 
+.primary:hover{
+background:#e63f3f;
+}
+
 .secondary{
 border:1px solid rgba(255,255,255,0.2);
 color:white;
+}
+
+.secondary:hover{
+background:rgba(255,255,255,0.06);
 }
 
 section{
@@ -133,25 +146,49 @@ text-align:center;
 background:#141b2d;
 padding:40px;
 border-radius:16px;
-max-width:600px;
+max-width:700px;
 margin:auto;
+border:1px solid rgba(255,255,255,0.05);
+}
+
+.download p{
+margin-bottom:10px;
+opacity:0.85;
 }
 
 footer{
 text-align:center;
 padding:30px 0;
 margin-top:40px;
-opacity:0.6;
+opacity:0.8;
 font-size:14px;
+border-top:1px solid rgba(255,255,255,0.08);
 }
 
 footer a{
 color:white;
-opacity:0.7;
 text-decoration:none;
+opacity:0.8;
 margin:0 6px;
 }
 
+footer a:hover{
+opacity:1;
+}
+
+@media (max-width: 768px){
+.hero h1{
+font-size:38px;
+}
+
+.hero p{
+font-size:16px;
+}
+
+nav a{
+margin-left:12px;
+}
+}
 </style>
 </head>
 
@@ -159,9 +196,7 @@ margin:0 6px;
 
 <header>
 <div class="container">
-
 <nav>
-
 <div class="logo">
 <span>GNX</span> Production
 </div>
@@ -171,44 +206,34 @@ margin:0 6px;
 <a href="#download">Download</a>
 <a href="#about">About</a>
 </div>
-
 </nav>
-
 </div>
 </header>
 
 <section class="hero">
-
 <div class="container">
 
 <h1>GNX Production</h1>
 
 <p>
-Desktop automation studio for media production workflows,
-video processing, and scalable publishing pipelines.
+Desktop automation studio for media production workflows, video processing,
+and scalable publishing pipelines.
 </p>
 
 <div class="buttons">
-
-<a class="btn primary"
-href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
-
+<a class="btn primary" href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
 Download for Windows
-
 </a>
 
-<a class="btn secondary" href="#features">
-View Features
+<a class="btn secondary" href="download.html">
+Download Page
 </a>
-
 </div>
 
 </div>
-
 </section>
 
 <section id="features">
-
 <div class="container">
 
 <h2 class="section-title">Core Features</h2>
@@ -247,57 +272,44 @@ Structured desktop workspace designed for media automation pipelines.
 </div>
 
 </div>
-
 </section>
 
 <section id="download">
-
 <div class="container">
 
 <h2 class="section-title">Download</h2>
 
 <div class="download">
-
-<p>
-GNX Production Desktop v0.1 for Windows
-</p>
+<p><b>GNX Production Desktop v0.1</b></p>
+<p>Available for Windows</p>
+<p>Click the button below to download the latest installer.</p>
 
 <br>
 
-<a class="btn primary"
-href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
-
+<a class="btn primary" href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
 Download Installer
-
 </a>
-
 </div>
 
 </div>
-
 </section>
 
 <section id="about">
-
 <div class="container">
 
 <h2 class="section-title">About</h2>
 
 <div class="download">
-
 <p><b>Product</b> : GNX Production Desktop</p>
 <p><b>Type</b> : Desktop Application</p>
 <p><b>Platform</b> : Windows</p>
 <p><b>Status</b> : Active Development</p>
-
 </div>
 
 </div>
-
 </section>
 
 <footer>
-
 © 2026 GNX Production
 
 <br><br>
@@ -306,7 +318,6 @@ Download Installer
 <a href="/terms.html">Terms</a> |
 <a href="/license.html">License</a> |
 <a href="/ai-disclaimer.html">AI Disclaimer</a>
-
 </footer>
 
 </body>

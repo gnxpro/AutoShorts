@@ -1,0 +1,57 @@
+{
+  "basic": {
+    "title": "Basic",
+    "badge": "Free",
+    "price_label": "Free",
+    "subtitle": "Full workflow access for early marketing and product trial",
+    "items": [
+      "2 social media accounts",
+      "2 videos per day",
+      "60 videos per 30 days",
+      "480p quality",
+      "AI tools enabled",
+      "Upload to Repliz enabled"
+    ],
+    "action_label": "",
+    "action_url": ""
+  },
+  "premium": {
+    "title": "Premium",
+    "badge": "Most Popular",
+    "price_label": "Set by Admin",
+    "subtitle": "100 social media accounts, locked by Repliz",
+    "items": [
+      "100 social media accounts",
+      "Locked by Repliz",
+      "8 videos per day",
+      "240 videos per 30 days",
+      "Up to 1080p quality",
+      "AI tools enabled",
+      "Scheduling enabled",
+      "Multi-PC usage allowed with the same registered Repliz account"
+    ],
+    "action_label": "Open Website",
+    "action_url": "https://www.instagram.com/genexproduction/"
+  },
+  "business": {
+    "title": "Business",
+    "badge": "Custom Enterprise",
+    "price_label": "Contact Admin",
+    "subtitle": "Multi-PC and multi-account business deployment",
+    "items": [
+      "Multi-PC deployment",
+      "Multi social media accounts",
+      "Admin-managed configuration",
+      "Custom billing",
+      "Custom capacity",
+      "Special pricing based on business needs"
+    ],
+    "action_label": "Contact via WhatsApp",
+    "action_url": "https://wa.me/6287828541944"
+  },
+  "notes": [
+    "Premium remains active only when the connected Repliz account matches the registered licensed account.",
+    "If a different Repliz account is used, the application automatically runs in Basic mode.",
+    "Business plans are managed directly by admin for multi-PC and large-scale account usage."
+  ]
+}

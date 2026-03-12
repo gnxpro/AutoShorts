@@ -1,117 +1,70 @@
 import os
 import sys
-import re
-from datetime import datetime
+from pathlib import Path
 
 
-APP_NAME = "GNX_PRODUCTION"
+APPDATA_FOLDER = "GNX_PRODUCTION"
 
 
-# ============================================
-# SAFE FILE NAME
-# ============================================
-
-def sanitize_filename(name):
-    name = re.sub(r'[\\/*?:"<>|]', "", name)
-    name = name.replace(" ", "_")
-    return name[:80]
-
-
-# ============================================
-# DESKTOP PATH
-# ============================================
-
-def get_desktop_path():
-    return os.path.join(os.path.expanduser("~"), "Desktop")
+def app_root_dir() -> Path:
+    """
+    Where the app binaries/assets live.
+    - PyInstaller installed: folder of GNX_Production.exe
+    - Dev: project root (AutoShorts/)
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    # core/app_paths.py -> core -> project root
+    return Path(__file__).resolve().parents[1]
 
 
-# ============================================
-# BASE DATA (CONFIG, LOGS, TEMP)
-# ============================================
-
-def get_base_data_dir():
-    base_dir = os.path.join(
-        os.getenv("LOCALAPPDATA"),
-        "GNX_PRODUCTION"
-    )
-    os.makedirs(base_dir, exist_ok=True)
-    return base_dir
+def appdata_dir() -> Path:
+    """
+    Writable folder for installed apps.
+    """
+    base = os.getenv("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+    d = Path(base) / APPDATA_FOLDER
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
-# ============================================
-# LOGS PATH (FIX FOR LOGGER)
-# ============================================
-
-def get_logs_path():
-    base_dir = get_base_data_dir()
-    logs_dir = os.path.join(base_dir, "logs")
-    os.makedirs(logs_dir, exist_ok=True)
-    return logs_dir
+def outputs_dir() -> Path:
+    d = appdata_dir() / "outputs"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
-# ============================================
-# SESSION AUTO INCREMENT
-# ============================================
-
-def get_next_session_folder(base_path):
-
-    session_index = 1
-
-    while True:
-        folder_name = f"Run_{session_index:02d}"
-        full_path = os.path.join(base_path, folder_name)
-
-        if not os.path.exists(full_path):
-            os.makedirs(full_path)
-            return full_path
-
-        session_index += 1
+def jobs_dir() -> Path:
+    d = outputs_dir() / "jobs"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
-# ============================================
-# ULTIMATE OUTPUT SYSTEM
-# ============================================
+def ensure_writable_workdir() -> Path:
+    """
+    Ensure the process is running in a writable directory.
+    This prevents WinError 5 when app is installed in Program Files.
 
-def get_output_path(mode, title="Untitled"):
+    Strategy:
+    - Always ensure AppData dirs exist
+    - If current working directory is not writable, chdir to AppData
+    - Also set env vars for debugging/reference
+    """
+    ad = appdata_dir()
+    outputs_dir()
+    jobs_dir()
 
-    desktop = get_desktop_path()
-    today = datetime.now().strftime("%Y-%m-%d")
+    os.environ["GNX_APPDATA_DIR"] = str(ad)
+    os.environ["GNX_APP_ROOT"] = str(app_root_dir())
 
-    title_safe = sanitize_filename(title)
-
-    base_structure = os.path.join(
-        desktop,
-        APP_NAME,
-        mode.capitalize(),
-        today,
-        title_safe
-    )
-
-    os.makedirs(base_structure, exist_ok=True)
-
-    session_folder = get_next_session_folder(base_structure)
-
-    return session_folder
-
-
-# ============================================
-# ACCOUNT SUBFOLDER
-# ============================================
-
-def create_account_subfolder(base_path, account_name):
-
-    account_safe = sanitize_filename(account_name)
-    account_folder = os.path.join(base_path, account_safe)
-
-    os.makedirs(account_folder, exist_ok=True)
-
-    return account_folder
-
-
-# ============================================
-# CONFIG PATH
-# ============================================
-
-def get_config_path():
-    base_dir = get_base_data_dir()
-    return os.path.join(base_dir, "config.json")
+    # Test if current folder is writable
+    cwd = Path.cwd()
+    try:
+        test_file = cwd / ".gnx_write_test.tmp"
+        test_file.write_text("ok", encoding="utf-8")
+        test_file.unlink(missing_ok=True)
+        return cwd
+    except Exception:
+        # Not writable → move to AppData
+        os.chdir(str(ad))
+        return ad

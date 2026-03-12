@@ -1,26 +1,21 @@
 import customtkinter as ctk
+
 from ui.app_shell import AppShell
 from core.engine import Engine
-from core.scheduler_engine import SchedulerEngine
 
 
 def main():
-    print("[AI] Provider: openai")
+    ctk.set_appearance_mode("dark")
+    ctk.set_default_color_theme("blue")
 
     app = ctk.CTk()
-    app.title("GNX PRODUCTION")
-    app.geometry("1200x750")
+    app.title("GNX Production Studio")
+    app.geometry("1440x900")
+    app.minsize(1200, 760)
 
-    # INIT CORE SERVICES (ONE INSTANCE ONLY)
-    engine = Engine()
-    scheduler = SchedulerEngine(engine)
-
-    # Attach to app so pages can access
-    app.engine = engine
-    app.scheduler = scheduler
+    app.engine = Engine()
 
     AppShell(app)
-
     app.mainloop()
 
 

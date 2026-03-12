@@ -1,99 +1,170 @@
-import customtkinter as ctk
-from tkinter import messagebox
-from core.config_manager import ConfigManager
-from core.services.cloudinary_service import CloudinaryService
+import base64
+import json
+from typing import Any, Dict, Optional
+
+import requests
 
 
-class CloudinaryPage(ctk.CTkFrame):
+class ReplizAuthError(Exception):
+    pass
 
-    def __init__(self, parent):
-        super().__init__(parent, fg_color="transparent")
 
-        self.grid_columnconfigure(0, weight=1)
+class ReplizAPIError(Exception):
+    pass
 
-        self.config = ConfigManager()
 
-        self._build_ui()
-        self._load_saved()
+class ReplizService:
+    def __init__(
+        self,
+        base_url: str = "",
+        username: str = "",
+        password: str = "",
+        timeout: int = 30,
+    ):
+        self.base_url = (base_url or "").strip().rstrip("/")
+        self.username = (username or "").strip()
+        self.password = (password or "").strip()
+        self.timeout = timeout
 
-    # =========================
-    # UI
-    # =========================
+    # ---------------------------------------------------------
+    # Credentials
+    # ---------------------------------------------------------
+    def set_credentials(self, base_url: str, username: str, password: str):
+        self.base_url = (base_url or "").strip().rstrip("/")
+        self.username = (username or "").strip()
+        self.password = (password or "").strip()
 
-    def _build_ui(self):
+    def is_configured(self) -> bool:
+        return bool(self.base_url and self.username and self.password)
 
-        ctk.CTkLabel(
-            self,
-            text="Cloudinary Settings",
-            font=ctk.CTkFont(size=22, weight="bold")
-        ).grid(row=0, column=0, pady=(40, 20))
+    def _ensure_configured(self):
+        if not self.is_configured():
+            raise ReplizAuthError("Repliz belum dikonfigurasi lengkap. Isi Base URL, Username, dan Password.")
 
-        self.cloud_name = ctk.CTkEntry(self, placeholder_text="Cloud Name")
-        self.cloud_name.grid(row=1, column=0, padx=80, pady=8, sticky="ew")
+    # ---------------------------------------------------------
+    # HTTP helpers
+    # ---------------------------------------------------------
+    def _auth_header(self) -> Dict[str, str]:
+        self._ensure_configured()
+        token = base64.b64encode(f"{self.username}:{self.password}".encode("utf-8")).decode("utf-8")
+        return {
+            "Authorization": f"Basic {token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
 
-        self.api_key = ctk.CTkEntry(self, placeholder_text="API Key")
-        self.api_key.grid(row=2, column=0, padx=80, pady=8, sticky="ew")
+    def _url(self, path: str) -> str:
+        path = (path or "").strip()
+        if not path.startswith("/"):
+            path = "/" + path
+        return f"{self.base_url}{path}"
 
-        self.api_secret = ctk.CTkEntry(self, placeholder_text="API Secret", show="*")
-        self.api_secret.grid(row=3, column=0, padx=80, pady=8, sticky="ew")
-
-        ctk.CTkButton(
-            self,
-            text="Test Connection",
-            command=self.test_connection
-        ).grid(row=4, column=0, pady=10)
-
-        ctk.CTkButton(
-            self,
-            text="Save Settings",
-            fg_color="#16a34a",
-            command=self.save_settings
-        ).grid(row=5, column=0, pady=10)
-
-    # =========================
-    # LOAD CONFIG
-    # =========================
-
-    def _load_saved(self):
-
-        cloud_conf = self.config.get_cloudinary()
-
-        if cloud_conf:
-            self.cloud_name.insert(0, cloud_conf.get("cloud_name", ""))
-            self.api_key.insert(0, cloud_conf.get("api_key", ""))
-            self.api_secret.insert(0, cloud_conf.get("api_secret", ""))
-
-    # =========================
-    # SAVE
-    # =========================
-
-    def save_settings(self):
-
-        cloud_name = self.cloud_name.get().strip()
-        api_key = self.api_key.get().strip()
-        api_secret = self.api_secret.get().strip()
-
-        if not cloud_name or not api_key or not api_secret:
-            messagebox.showerror("Error", "All fields are required.")
-            return
-
-        self.config.set_cloudinary(
-            cloud_name=cloud_name,
-            api_key=api_key,
-            api_secret=api_secret
-        )
-
-        messagebox.showinfo("Saved", "Cloudinary settings saved.")
-
-    # =========================
-    # TEST CONNECTION
-    # =========================
-
-    def test_connection(self):
+    def _handle_response(self, response: requests.Response) -> Any:
+        text = response.text or ""
 
         try:
-            service = CloudinaryService()
-            service.test_connection()
-            messagebox.showinfo("Success", "Cloudinary connected successfully.")
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+            data = response.json()
+        except Exception:
+            data = None
+
+        if response.status_code in (401, 403):
+            msg = "Unauthorized"
+            if isinstance(data, dict):
+                msg = data.get("message") or data.get("error") or msg
+            raise ReplizAuthError(msg)
+
+        if response.status_code >= 400:
+            msg = f"HTTP {response.status_code}"
+            if isinstance(data, dict):
+                msg = data.get("message") or data.get("error") or msg
+            elif text:
+                msg = text[:300]
+            raise ReplizAPIError(msg)
+
+        return data if data is not None else text
+
+    def _get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        self._ensure_configured()
+        try:
+            r = requests.get(
+                self._url(path),
+                headers=self._auth_header(),
+                params=params or {},
+                timeout=self.timeout,
+            )
+            return self._handle_response(r)
+        except requests.RequestException as e:
+            raise ReplizAPIError(str(e))
+
+    def _post(self, path: str, payload: Dict[str, Any]) -> Any:
+        self._ensure_configured()
+        try:
+            r = requests.post(
+                self._url(path),
+                headers=self._auth_header(),
+                data=json.dumps(payload),
+                timeout=self.timeout,
+            )
+            return self._handle_response(r)
+        except requests.RequestException as e:
+            raise ReplizAPIError(str(e))
+
+    # ---------------------------------------------------------
+    # Public API
+    # ---------------------------------------------------------
+    def validate_keys(self) -> bool:
+        """
+        Test basic auth against a lightweight endpoint.
+        """
+        # Umumnya daftar social accounts cukup aman untuk validasi
+        self.get_social_accounts(limit=1)
+        return True
+
+    def get_social_accounts(self, page: int = 1, limit: int = 50) -> Any:
+        """
+        Fetch connected social accounts.
+        Sesuaikan endpoint jika instance Repliz kamu beda.
+        """
+        candidates = [
+            "/social-accounts",
+            "/socialAccounts",
+            "/accounts/social",
+            "/accounts",
+        ]
+
+        last_error = None
+        for path in candidates:
+            try:
+                return self._get(path, params={"page": page, "limit": limit})
+            except Exception as e:
+                last_error = e
+
+        if last_error:
+            raise last_error
+        raise ReplizAPIError("Gagal mengambil social accounts.")
+
+    def create_schedule(self, payload: Dict[str, Any]) -> Any:
+        """
+        Create schedule / publish job.
+        """
+        candidates = [
+            "/queue",
+            "/queues",
+            "/schedule",
+            "/schedules",
+            "/posts/schedule",
+        ]
+
+        last_error = None
+        for path in candidates:
+            try:
+                return self._post(path, payload)
+            except Exception as e:
+                last_error = e
+
+        if last_error:
+            raise last_error
+        raise ReplizAPIError("Gagal membuat schedule.")
+
+    def schedule(self, payload: Dict[str, Any]) -> Any:
+        return self.create_schedule(payload)

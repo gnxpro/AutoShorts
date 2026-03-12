@@ -1,237 +1,382 @@
-import os
 import json
-import base64
+import os
+import webbrowser
 from pathlib import Path
-from urllib import request, error
-
-import customtkinter as ctk
 from tkinter import messagebox
 
+import customtkinter as ctk
 
-PRIMARY_RED = "#b11226"
-GREEN = "#1f8a3b"
-GREEN_HOVER = "#196f2f"
-
-BLACK = "#000000"
-CARD = "#111111"
-CARD2 = "#0b0b0b"
-
-TEXT_PRIMARY = "#EDEDED"
-TEXT_MUTED = "#B8B8B8"
-
-
-def _appdata_dir() -> Path:
-    base = os.getenv("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    d = Path(base) / "GNX_PRODUCTION"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
-def _settings_path() -> Path:
-    return _appdata_dir() / "cloudinary_settings.json"
-
-
-def _basic_auth(api_key: str, api_secret: str) -> str:
-    token = base64.b64encode(f"{api_key}:{api_secret}".encode("utf-8")).decode("utf-8")
-    return f"Basic {token}"
-
-
-def _cloudinary_test_usage(cloud_name: str, api_key: str, api_secret: str) -> bool:
-    """
-    Test paling sederhana: GET /usage (Admin API).
-    Jika 200 -> OK.
-    """
-    url = f"https://api.cloudinary.com/v1_1/{cloud_name}/usage"
-    req = request.Request(
-        url=url,
-        method="GET",
-        headers={
-            "Authorization": _basic_auth(api_key, api_secret),
-            "Accept": "application/json",
-        },
-    )
-    try:
-        with request.urlopen(req, timeout=20) as resp:
-            return resp.status == 200
-    except error.HTTPError as e:
-        body = ""
-        try:
-            body = e.read().decode("utf-8", errors="replace")
-        except Exception:
-            pass
-        raise RuntimeError(f"Cloudinary HTTP {getattr(e, 'code', None)}: {body[:400]}")
-    except Exception as e:
-        raise RuntimeError(str(e))
+from core.theme_constants import (
+    PRIMARY_RED,
+    GREEN,
+    BLACK,
+    BORDER,
+    TEXT_PRIMARY,
+    TEXT_MUTED,
+    TEXT_SOFT,
+    BADGE_DARK,
+    BADGE_SUCCESS,
+    BADGE_ERROR,
+    BTN_DARK,
+    BTN_DARK_HOVER,
+)
+from core.ui_helpers import make_card
 
 
 class CloudinaryPage(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master, fg_color=BLACK)
-        self.engine = master.master.master.engine
 
         self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
         self._build_ui()
-        self._load_saved()
+        self.load_saved_config()
+
+    # ---------------------------------------------------------
+    # Paths / config
+    # ---------------------------------------------------------
+
+    def _appdata_dir(self) -> Path:
+        base = os.getenv("LOCALAPPDATA", "").strip()
+        if not base:
+            base = str(Path.home() / "AppData" / "Local")
+        p = Path(base) / "GNX_PRODUCTION"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    def _config_path(self) -> Path:
+        return self._appdata_dir() / "cloudinary.json"
+
+    # ---------------------------------------------------------
+    # UI
+    # ---------------------------------------------------------
 
     def _build_ui(self):
-        header = ctk.CTkFrame(self, fg_color=BLACK)
-        header.grid(row=0, column=0, sticky="ew", padx=40, pady=(30, 10))
+        outer = ctk.CTkScrollableFrame(self, fg_color=BLACK)
+        outer.grid(row=0, column=0, sticky="nsew", padx=30, pady=22)
+        outer.grid_columnconfigure(0, weight=1)
+
+        header = ctk.CTkFrame(outer, fg_color="transparent")
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         header.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
             header,
-            text="Cloudinary Connection",
+            text="Cloudinary Configuration",
+            font=ctk.CTkFont(size=30, weight="bold"),
             text_color=TEXT_PRIMARY,
-            font=ctk.CTkFont(size=28, weight="bold"),
         ).grid(row=0, column=0, sticky="w")
 
         ctk.CTkLabel(
             header,
-            text="Isi Cloud Name (User ID), API Key, API Secret → Test → Save & Connect.",
+            text="Connect your own Cloudinary account to upload and manage your generated videos.",
             text_color=TEXT_MUTED,
             wraplength=900,
             justify="left",
         ).grid(row=1, column=0, sticky="w", pady=(6, 0))
 
-        card = ctk.CTkFrame(self, fg_color=CARD, corner_radius=16)
-        card.grid(row=1, column=0, sticky="ew", padx=40, pady=(10, 14))
-        card.grid_columnconfigure(0, weight=1)
+        self.status_badge = ctk.CTkLabel(
+            header,
+            text="NOT SAVED",
+            text_color=TEXT_PRIMARY,
+            fg_color=BADGE_DARK,
+            corner_radius=12,
+            padx=14,
+            pady=7,
+        )
+        self.status_badge.grid(row=0, column=1, rowspan=2, sticky="e")
 
-        ctk.CTkLabel(
-            card,
-            text="CREDENTIALS",
-            text_color=PRIMARY_RED,
-            font=ctk.CTkFont(size=14, weight="bold"),
-        ).grid(row=0, column=0, sticky="w", padx=18, pady=(14, 8))
+        card = make_card(
+            outer,
+            "Connection Settings",
+            "Fill your own Cloudinary account settings. Upload Preset must be the real Cloudinary upload preset name, not API Key.",
+        )
+        card.grid(row=1, column=0, sticky="ew", pady=10)
 
         self.cloud_name_entry = ctk.CTkEntry(
             card,
-            placeholder_text="Cloud Name / User ID (contoh: dlcfc8xjy)",
+            placeholder_text="Cloud Name",
             text_color=TEXT_PRIMARY,
+            height=40,
         )
-        self.cloud_name_entry.grid(row=1, column=0, sticky="ew", padx=18, pady=6)
+        self.cloud_name_entry.pack(fill="x", padx=22, pady=(0, 10))
 
-        self.api_key_entry = ctk.CTkEntry(
+        self.upload_preset_entry = ctk.CTkEntry(
             card,
-            placeholder_text="API Key",
+            placeholder_text="Upload Preset (example: gnx_unsigned_upload)",
             text_color=TEXT_PRIMARY,
+            height=40,
         )
-        self.api_key_entry.grid(row=2, column=0, sticky="ew", padx=18, pady=6)
+        self.upload_preset_entry.pack(fill="x", padx=22, pady=(0, 10))
 
-        self.api_secret_entry = ctk.CTkEntry(
+        self.folder_entry = ctk.CTkEntry(
             card,
-            placeholder_text="API Secret",
+            placeholder_text="Folder (optional, example: gnx_uploads)",
             text_color=TEXT_PRIMARY,
-            show="*",
+            height=40,
         )
-        self.api_secret_entry.grid(row=3, column=0, sticky="ew", padx=18, pady=6)
+        self.folder_entry.pack(fill="x", padx=22, pady=(0, 10))
 
-        self.status_label = ctk.CTkLabel(card, text="", text_color=TEXT_MUTED)
-        self.status_label.grid(row=4, column=0, sticky="w", padx=18, pady=(6, 0))
+        self.secure_delivery_var = ctk.BooleanVar(value=True)
+        self.secure_delivery_cb = ctk.CTkCheckBox(
+            card,
+            text="Prefer secure delivery URL",
+            variable=self.secure_delivery_var,
+            text_color=TEXT_PRIMARY,
+        )
+        self.secure_delivery_cb.pack(anchor="w", padx=22, pady=(0, 8))
+
+        ctk.CTkLabel(
+            card,
+            text=(
+                "Tips:\n"
+                "- Cloud Name is your Cloudinary cloud name\n"
+                "- Upload Preset is the preset name from Cloudinary Upload Settings\n"
+                "- Use an unsigned upload preset for easiest setup\n"
+                "- Folder is optional and can be something simple like gnx_uploads"
+            ),
+            text_color=TEXT_MUTED,
+            justify="left",
+            anchor="w",
+            wraplength=860,
+        ).pack(fill="x", padx=22, pady=(0, 14))
 
         btn_row = ctk.CTkFrame(card, fg_color="transparent")
-        btn_row.grid(row=5, column=0, sticky="ew", padx=18, pady=(10, 14))
-        btn_row.grid_columnconfigure((0, 1), weight=1)
+        btn_row.pack(fill="x", padx=22, pady=(0, 16))
+        btn_row.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
 
-        self.test_btn = ctk.CTkButton(
+        ctk.CTkButton(
             btn_row,
-            text="Test Connection",
-            fg_color="#222222",
-            hover_color="#333333",
-            text_color=TEXT_PRIMARY,
-            command=self._test_connection,
-        )
-        self.test_btn.grid(row=0, column=0, padx=(0, 10), sticky="ew")
-
-        self.save_btn = ctk.CTkButton(
-            btn_row,
-            text="Save & Connect",
+            text="Save Config",
             fg_color=PRIMARY_RED,
             hover_color="#7a0d1a",
             text_color=TEXT_PRIMARY,
-            command=self._save_and_connect,
+            height=42,
+            command=self.save_config,
+        ).grid(row=0, column=0, padx=(0, 8), sticky="ew")
+
+        ctk.CTkButton(
+            btn_row,
+            text="Reload",
+            fg_color=BTN_DARK,
+            hover_color=BTN_DARK_HOVER,
+            text_color=TEXT_PRIMARY,
+            height=42,
+            command=self.load_saved_config,
+        ).grid(row=0, column=1, padx=8, sticky="ew")
+
+        ctk.CTkButton(
+            btn_row,
+            text="Open Config Folder",
+            fg_color=BTN_DARK,
+            hover_color=BTN_DARK_HOVER,
+            text_color=TEXT_PRIMARY,
+            height=42,
+            command=self.open_config_folder,
+        ).grid(row=0, column=2, padx=8, sticky="ew")
+
+        ctk.CTkButton(
+            btn_row,
+            text="Open Dashboard",
+            fg_color=BTN_DARK,
+            hover_color=BTN_DARK_HOVER,
+            text_color=TEXT_PRIMARY,
+            height=42,
+            command=self.open_cloudinary_dashboard,
+        ).grid(row=0, column=3, padx=8, sticky="ew")
+
+        ctk.CTkButton(
+            btn_row,
+            text="Open Media Library",
+            fg_color=GREEN,
+            hover_color="#1a6b31",
+            text_color=TEXT_PRIMARY,
+            height=42,
+            command=self.open_media_library,
+        ).grid(row=0, column=4, padx=(8, 0), sticky="ew")
+
+        info_card = make_card(
+            outer,
+            "Saved Location",
+            "Your personal Cloudinary config is stored per Windows user in AppData.",
         )
-        self.save_btn.grid(row=0, column=1, padx=(10, 0), sticky="ew")
+        info_card.grid(row=2, column=0, sticky="ew", pady=10)
 
-        info = ctk.CTkFrame(self, fg_color=CARD2, corner_radius=16)
-        info.grid(row=2, column=0, sticky="ew", padx=40, pady=(0, 30))
-        info.grid_columnconfigure(0, weight=1)
-
-        box = ctk.CTkTextbox(info, fg_color="#060606", text_color=TEXT_PRIMARY, height=140)
-        box.grid(row=0, column=0, sticky="ew", padx=18, pady=18)
-        box.insert(
-            "1.0",
-            "Setelah Connected:\n"
-            "- Upload video dari Dashboard akan jalan ke Cloudinary.\n"
-            "- Kalau gagal, cek Cloud Name / API Key / API Secret.\n"
+        self.path_label = ctk.CTkLabel(
+            info_card,
+            text=f"Config Path: {self._config_path()}",
+            text_color=TEXT_SOFT,
+            wraplength=920,
+            justify="left",
         )
+        self.path_label.pack(anchor="w", padx=22, pady=(0, 8))
 
-    def _load_saved(self):
-        p = _settings_path()
-        if not p.exists():
+        self.summary_label = ctk.CTkLabel(
+            info_card,
+            text="Summary: -",
+            text_color=TEXT_MUTED,
+            wraplength=920,
+            justify="left",
+        )
+        self.summary_label.pack(anchor="w", padx=22, pady=(0, 16))
+
+        preview_card = make_card(
+            outer,
+            "Config Preview",
+            "Stored JSON preview.",
+        )
+        preview_card.grid(row=3, column=0, sticky="ew", pady=10)
+
+        self.preview_box = ctk.CTkTextbox(
+            preview_card,
+            height=240,
+            fg_color="#060606",
+            text_color=TEXT_PRIMARY,
+            border_width=1,
+            border_color=BORDER,
+        )
+        self.preview_box.pack(fill="x", padx=22, pady=(0, 16))
+
+    # ---------------------------------------------------------
+    # Runtime env
+    # ---------------------------------------------------------
+
+    def _apply_runtime_env(self, data: dict):
+        os.environ["CLOUDINARY_CLOUD_NAME"] = str(data.get("cloud_name", "")).strip()
+        os.environ["CLOUDINARY_UPLOAD_PRESET"] = str(data.get("upload_preset", "")).strip()
+
+        folder = str(data.get("folder", "")).strip()
+        if folder:
+            os.environ["CLOUDINARY_FOLDER"] = folder
+        else:
+            os.environ.pop("CLOUDINARY_FOLDER", None)
+
+        os.environ["CLOUDINARY_SECURE_DELIVERY"] = "1" if bool(data.get("secure_delivery", True)) else "0"
+
+    # ---------------------------------------------------------
+    # Actions
+    # ---------------------------------------------------------
+
+    def save_config(self):
+        cloud_name = self.cloud_name_entry.get().strip()
+        upload_preset = self.upload_preset_entry.get().strip()
+        folder = self.folder_entry.get().strip()
+        secure_delivery = bool(self.secure_delivery_var.get())
+
+        if not cloud_name or not upload_preset:
+            self.status_badge.configure(text="ERROR", fg_color=BADGE_ERROR)
+            messagebox.showerror(
+                "Cloudinary",
+                "Cloud Name and Upload Preset are required.",
+            )
             return
+
+        data = {
+            "cloud_name": cloud_name,
+            "upload_preset": upload_preset,
+            "folder": folder,
+            "secure_delivery": secure_delivery,
+        }
+
         try:
-            data = json.loads(p.read_text(encoding="utf-8"))
-            if data.get("cloud_name"):
-                self.cloud_name_entry.insert(0, data["cloud_name"])
-            if data.get("api_key"):
-                self.api_key_entry.insert(0, data["api_key"])
-            if data.get("api_secret"):
-                self.api_secret_entry.insert(0, data["api_secret"])
+            self._config_path().write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            self._apply_runtime_env(data)
+            self.status_badge.configure(text="SAVED", fg_color=BADGE_SUCCESS)
+            self._refresh_preview(data)
+            messagebox.showinfo("Cloudinary", "Cloudinary config saved successfully.")
+        except Exception as e:
+            self.status_badge.configure(text="ERROR", fg_color=BADGE_ERROR)
+            messagebox.showerror("Cloudinary Error", str(e))
+
+    def load_saved_config(self):
+        path = self._config_path()
+
+        if not path.exists():
+            self.status_badge.configure(text="NOT SAVED", fg_color=BADGE_DARK)
+            self.path_label.configure(text=f"Config Path: {path}")
+            self.summary_label.configure(text="Summary: No saved Cloudinary config found.")
+            self.preview_box.delete("1.0", "end")
+            self.preview_box.insert("1.0", "{}")
+            return
+
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+
+            self.cloud_name_entry.delete(0, "end")
+            self.cloud_name_entry.insert(0, str(data.get("cloud_name", "")))
+
+            self.upload_preset_entry.delete(0, "end")
+            self.upload_preset_entry.insert(0, str(data.get("upload_preset", "")))
+
+            self.folder_entry.delete(0, "end")
+            self.folder_entry.insert(0, str(data.get("folder", "")))
+
+            self.secure_delivery_var.set(bool(data.get("secure_delivery", True)))
+
+            self._apply_runtime_env(data)
+            self.status_badge.configure(text="LOADED", fg_color=GREEN)
+            self._refresh_preview(data)
+
+        except Exception as e:
+            self.status_badge.configure(text="ERROR", fg_color=BADGE_ERROR)
+            self.summary_label.configure(text=f"Summary: Failed to read config: {e}")
+            self.preview_box.delete("1.0", "end")
+            self.preview_box.insert("1.0", f"Failed to read config: {e}")
+
+    def _refresh_preview(self, data: dict):
+        self.path_label.configure(text=f"Config Path: {self._config_path()}")
+
+        cloud_name = str(data.get("cloud_name", "")).strip()
+        upload_preset = str(data.get("upload_preset", "")).strip()
+        folder = str(data.get("folder", "")).strip() or "-"
+        secure_delivery = bool(data.get("secure_delivery", True))
+
+        self.summary_label.configure(
+            text=(
+                f"Summary: cloud_name={cloud_name} | "
+                f"upload_preset={upload_preset} | "
+                f"folder={folder} | "
+                f"secure_delivery={secure_delivery}"
+            )
+        )
+
+        self.preview_box.delete("1.0", "end")
+        self.preview_box.insert(
+            "1.0",
+            json.dumps(data, ensure_ascii=False, indent=2),
+        )
+
+    def open_config_folder(self):
+        try:
+            path = self._appdata_dir().resolve()
+            if os.name == "nt":
+                os.startfile(str(path))
+            else:
+                import subprocess
+                subprocess.Popen(["xdg-open", str(path)])
+        except Exception as e:
+            messagebox.showerror("Open Folder Error", str(e))
+
+    def open_cloudinary_dashboard(self):
+        try:
+            cloud_name = self.cloud_name_entry.get().strip()
+            if cloud_name:
+                webbrowser.open(f"https://console.cloudinary.com/console/{cloud_name}")
+            else:
+                webbrowser.open("https://console.cloudinary.com/")
         except Exception:
             pass
 
-    def _collect(self):
-        cloud = self.cloud_name_entry.get().strip()
-        key = self.api_key_entry.get().strip()
-        secret = self.api_secret_entry.get().strip()
-        if not cloud or not key or not secret:
-            raise ValueError("Cloud Name, API Key, dan API Secret wajib diisi.")
-        return cloud, key, secret
-
-    def _apply_env(self, cloud: str, key: str, secret: str):
-        os.environ["CLOUDINARY_CLOUD_NAME"] = cloud
-        os.environ["CLOUDINARY_API_KEY"] = key
-        os.environ["CLOUDINARY_API_SECRET"] = secret
-
-        # Re-init cloudinary service jika ada
+    def open_media_library(self):
         try:
-            from core.services.cloudinary_service import CloudinaryService
-            self.engine.cloudinary_service = CloudinaryService()
+            cloud_name = self.cloud_name_entry.get().strip()
+            if cloud_name:
+                webbrowser.open(f"https://console.cloudinary.com/console/{cloud_name}/media_library/home")
+            else:
+                webbrowser.open("https://console.cloudinary.com/")
         except Exception:
             pass
-
-    def _test_connection(self):
-        try:
-            cloud, key, secret = self._collect()
-            ok = _cloudinary_test_usage(cloud, key, secret)
-            if ok:
-                self.status_label.configure(text="✅ Cloudinary Connected")
-                self.save_btn.configure(fg_color=GREEN, hover_color=GREEN_HOVER)
-            else:
-                self.status_label.configure(text="❌ Cloudinary Test Failed")
-        except Exception as e:
-            messagebox.showerror("Cloudinary Error", str(e))
-
-    def _save_and_connect(self):
-        try:
-            cloud, key, secret = self._collect()
-
-            data = {"cloud_name": cloud, "api_key": key, "api_secret": secret}
-            _settings_path().write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-            self._apply_env(cloud, key, secret)
-
-            # auto test setelah save
-            ok = _cloudinary_test_usage(cloud, key, secret)
-            if ok:
-                self.status_label.configure(text="✅ Saved & Connected")
-                self.save_btn.configure(fg_color=GREEN, hover_color=GREEN_HOVER)
-                messagebox.showinfo("Cloudinary", "Saved & Connected.")
-            else:
-                self.status_label.configure(text="⚠ Saved, tapi test gagal")
-                messagebox.showwarning("Cloudinary", "Saved, tapi test gagal. Cek credential.")
-
-        except Exception as e:
-            messagebox.showerror("Cloudinary Error", str(e))

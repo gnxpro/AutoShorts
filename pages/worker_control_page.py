@@ -48,22 +48,21 @@ def _jobs_dir() -> Path:
 
 
 def _base_dir() -> Path:
-    # ✅ for installed exe (PyInstaller)
     if getattr(sys, "frozen", False):
         return Path(sys.executable).parent
-    # ✅ for dev run
     return Path(__file__).resolve().parents[1]
 
 
 def _find_worker_exe() -> Path | None:
     base = _base_dir()
-    candidates = [
-        base / "gnx_worker.exe",
-        base / "GNX_Production" / "gnx_worker.exe",  # extra safety if copied wrongly
-    ]
-    for p in candidates:
-        if p.exists():
-            return p
+    p = base / "gnx_worker.exe"
+    if p.exists():
+        return p
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        mp = Path(meipass) / "gnx_worker.exe"
+        if mp.exists():
+            return mp
     return None
 
 
@@ -77,20 +76,17 @@ def _find_worker_entry_py() -> Path | None:
     for p in candidates:
         if p.exists():
             return p
-    # onefile mode: sometimes files extracted into _MEIPASS
     meipass = getattr(sys, "_MEIPASS", None)
     if meipass:
-        mp = Path(meipass)
-        for p in [mp / "worker_entry.py", mp / "gnx" / "worker_entry.py"]:
-            if p.exists():
-                return p
+        mp = Path(meipass) / "worker_entry.py"
+        if mp.exists():
+            return mp
     return None
 
 
 class WorkerControlPage(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master, fg_color=BLACK)
-
         self.worker_proc: subprocess.Popen | None = None
 
         self.grid_columnconfigure(0, weight=1)
@@ -113,7 +109,7 @@ class WorkerControlPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             header,
-            text="Start/Stop background worker. Output folder is stored in LocalAppData (safe for installed apps).",
+            text="Start/Stop background worker. Worker lock/log saved in LocalAppData (safe).",
             text_color=TEXT_MUTED,
             wraplength=980,
             justify="left",
@@ -146,7 +142,7 @@ class WorkerControlPage(ctk.CTkFrame):
 
         ctk.CTkButton(
             btn_row,
-            text="Stop Worker",
+            text="Stop Worker (Graceful)",
             fg_color="#222222",
             hover_color="#333333",
             text_color=TEXT_PRIMARY,
@@ -164,11 +160,11 @@ class WorkerControlPage(ctk.CTkFrame):
 
         ctk.CTkButton(
             btn_row,
-            text="Open outputs/jobs",
+            text="Open AppData",
             fg_color="#222222",
             hover_color="#333333",
             text_color=TEXT_PRIMARY,
-            command=lambda: _safe_open_path(str(_jobs_dir())),
+            command=lambda: _safe_open_path(str(_appdata_dir())),
         ).grid(row=0, column=3, padx=(10, 0), sticky="ew")
 
         log_card = ctk.CTkFrame(self, fg_color=CARD2, corner_radius=16)
@@ -196,16 +192,28 @@ class WorkerControlPage(ctk.CTkFrame):
             messagebox.showinfo("Worker", "Worker is already running.")
             return
 
-        base = _base_dir()
         exe = _find_worker_exe()
         entry = _find_worker_entry_py()
+
+        workdir = _appdata_dir()
+        env = os.environ.copy()
+        env["GNX_APPDATA_DIR"] = str(workdir)
+
+        # clear stop flag before starting
+        for p in (workdir / "stop.flag", workdir / "stop.falg"):
+            try:
+                if p.exists():
+                    p.unlink()
+            except Exception:
+                pass
 
         try:
             if exe:
                 self._log(f"Starting worker EXE: {exe}")
                 self.worker_proc = subprocess.Popen(
                     [str(exe)],
-                    cwd=str(base),
+                    cwd=str(workdir),
+                    env=env,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
@@ -214,7 +222,8 @@ class WorkerControlPage(ctk.CTkFrame):
                 self._log(f"Starting worker PY: {entry}")
                 self.worker_proc = subprocess.Popen(
                     [sys.executable, str(entry)],
-                    cwd=str(base),
+                    cwd=str(workdir),
+                    env=env,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
@@ -222,33 +231,45 @@ class WorkerControlPage(ctk.CTkFrame):
             else:
                 messagebox.showerror(
                     "Worker",
-                    "Could not find gnx_worker.exe or worker_entry.py in the app folder.\n\n"
-                    "Fix: bundle gnx_worker.exe into dist\\GNX_Production\\ or rebuild installer."
+                    "Could not find gnx_worker.exe or worker_entry.py.\n"
+                    "Fix: rebuild Premium installer to include worker."
                 )
                 return
 
             self.status_label.configure(text="Worker Status: RUNNING")
-            self._log("Worker started.")
+            self._log(f"Worker started (cwd={workdir}).")
 
         except Exception as e:
             messagebox.showerror("Worker Error", str(e))
 
     def _stop_worker(self):
-        if not self.worker_proc or self.worker_proc.poll() is not None:
-            self.worker_proc = None
-            self.status_label.configure(text="Worker Status: STOPPED")
-            self._log("Worker is not running.")
+        workdir = _appdata_dir()
+        stop_flag = workdir / "stop.flag"
+
+        # create stop flag (graceful stop)
+        try:
+            stop_flag.write_text("stop", encoding="utf-8")
+            self._log(f"stop.flag created: {stop_flag}")
+        except Exception as e:
+            messagebox.showerror("Worker Stop Error", f"Cannot create stop.flag: {e}")
             return
 
-        try:
-            self._log("Stopping worker...")
-            self.worker_proc.terminate()
+        # wait for graceful exit
+        if self.worker_proc and self.worker_proc.poll() is None:
+            self._log("Waiting for worker to exit gracefully...")
             try:
-                self.worker_proc.wait(timeout=3)
+                self.worker_proc.wait(timeout=6)
             except Exception:
-                self.worker_proc.kill()
-            self.worker_proc = None
-            self.status_label.configure(text="Worker Status: STOPPED")
-            self._log("Worker stopped.")
-        except Exception as e:
-            messagebox.showerror("Worker Error", str(e))
+                self._log("Graceful stop timeout. Terminating worker...")
+                try:
+                    self.worker_proc.terminate()
+                    self.worker_proc.wait(timeout=3)
+                except Exception:
+                    try:
+                        self.worker_proc.kill()
+                    except Exception:
+                        pass
+
+        self.worker_proc = None
+        self.status_label.configure(text="Worker Status: STOPPED")
+        self._log("Worker stopped.")

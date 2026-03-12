@@ -1,13 +1,28 @@
 venv/
 .venv/
-assets/ffmpeg/
-release/
+__pycache__/
+*.pyc
+
+# build & release
 dist/
 build/
+release/
+
+# runtime
 outputs/
 temp*/
+logs/
+
+# secrets
 .env
+.env.*
+
+# binaries / large
+assets/ffmpeg/
 *.exe
 *.dll
 *.zip
 *.7z
+*.mp4
+*.mov
+*.mkv

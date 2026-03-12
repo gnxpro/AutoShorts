@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import os
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -17,7 +18,7 @@ MAX_REPLIZ_ACCOUNTS = 100
 
 
 # -----------------------
-# .env loader (Windows friendly)
+# Env loader
 # -----------------------
 def _load_env_manual(env_path: Path) -> None:
     if not env_path.exists():
@@ -37,16 +38,53 @@ def _load_env_manual(env_path: Path) -> None:
             os.environ[k] = v
 
 
-def load_dotenv_best_effort(root_dir: Optional[Path] = None) -> None:
-    root = root_dir or Path.cwd()
+def load_dotenv_best_effort() -> None:
+    roots: List[Path] = [Path.cwd()]
+    try:
+        import sys
+        if getattr(sys, "frozen", False):
+            roots.append(Path(sys.executable).parent)
+    except Exception:
+        pass
+
     try:
         from dotenv import load_dotenv  # type: ignore
-        load_dotenv(dotenv_path=root / ".env", override=False)
-        load_dotenv(dotenv_path=root / ".env.local", override=False)
-        return
+        for r in roots:
+            load_dotenv(dotenv_path=r / ".env", override=False)
+            load_dotenv(dotenv_path=r / ".env.local", override=False)
     except Exception:
-        _load_env_manual(root / ".env")
-        _load_env_manual(root / ".env.local")
+        for r in roots:
+            _load_env_manual(r / ".env")
+            _load_env_manual(r / ".env.local")
+
+
+# -----------------------
+# Documents root
+# -----------------------
+def _documents_root() -> Path:
+    env = os.getenv("GNX_OUTPUT_ROOT", "").strip()
+    if env:
+        p = Path(env)
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    home = Path.home()
+    docs = home / "Documents"
+    root = docs / "GNX Production"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _default_output_dir() -> str:
+    p = _documents_root() / "Outputs"
+    p.mkdir(parents=True, exist_ok=True)
+    return str(p)
+
+
+def _default_temp_dir() -> str:
+    p = _documents_root() / "Temp"
+    p.mkdir(parents=True, exist_ok=True)
+    return str(p)
 
 
 # -----------------------
@@ -68,7 +106,7 @@ async def _call_best_effort(fn: Callable[..., Any], attempts: List[Tuple[Tuple[A
             continue
     if last:
         raise last
-    raise TypeError("No matching signature")
+    raise TypeError("No matching signature for function call")
 
 
 def _exists_file(p: Union[str, Path]) -> bool:
@@ -85,7 +123,7 @@ def _normalize_url(u: str) -> str:
     if not u:
         return u
     if u.startswith("ps://"):
-        return "htt" + u  # => https://
+        return "htt" + u
     if u.startswith("//"):
         return "https:" + u
     if u.startswith("res.cloudinary.com"):
@@ -102,17 +140,13 @@ def _guess_thumbnail(video_url: str) -> Optional[str]:
     u = _normalize_url(video_url)
     if not u:
         return None
-
-    # Cloudinary trick: mp4 -> jpg frame
     if "res.cloudinary.com" in u and "/video/upload/" in u:
         thumb = u.replace("/video/upload/", "/video/upload/so_0,f_jpg/")
         if thumb.lower().endswith(".mp4"):
             thumb = thumb[:-4] + ".jpg"
         return thumb
-
     if u.lower().endswith(".mp4"):
         return u[:-4] + ".jpg"
-
     return None
 
 
@@ -121,13 +155,11 @@ def _payload_source(payload: Dict[str, Any]) -> Tuple[str, str]:
         v = payload.get(k)
         if v:
             return "youtube", str(v)
-
     for k in ("file_path", "path", "offline_path", "local_path"):
         v = payload.get(k)
         if v:
             return "file", str(v)
-
-    raise ValueError("Payload tidak punya source. Isi youtube_url/url atau file_path/offline_path.")
+    raise ValueError("Payload has no source. Fill youtube_url OR file_path/offline_path.")
 
 
 def _uploads_to_variant_urls(uploads: Any) -> Dict[str, str]:
@@ -136,7 +168,7 @@ def _uploads_to_variant_urls(uploads: Any) -> Dict[str, str]:
         for variant, v in uploads.items():
             url = None
             if isinstance(v, dict):
-                url = v.get("url") or v.get("secure_url") or v.get("cloudinary_url")
+                url = v.get("url") or v.get("secure_url") or v.get("cloudinary_url") or v.get("video_url")
             elif isinstance(v, str):
                 url = v
             if url:
@@ -166,6 +198,150 @@ def _select_accounts_for_variant(
 
 
 # -----------------------
+# AI stage
+# -----------------------
+def build_ai_stage_fn() -> Callable[[str, JobContext], Any]:
+    from core.services.ai_content_service import AIContentService
+
+    def _normalize_tools(ai_options: Dict[str, Any]) -> Dict[str, Any]:
+        tools = ai_options.get("tools")
+        if isinstance(tools, dict) and tools:
+            return tools
+
+        prompts = ai_options.get("prompts") or {}
+
+        return {
+            "subtitle": {
+                "enabled": bool(ai_options.get("enable_subtitles", False)),
+                "mode": str(ai_options.get("subtitle_mode", "auto")).strip().lower(),
+                "prompt": str(prompts.get("subtitle", "")).strip(),
+            },
+            "hook": {
+                "enabled": bool(ai_options.get("enable_hooks", False)),
+                "mode": str(ai_options.get("hook_mode", "auto")).strip().lower(),
+                "prompt": str(prompts.get("hook", "")).strip(),
+            },
+            "niche": {
+                "enabled": bool(ai_options.get("enable_niche", False)),
+                "mode": str(ai_options.get("niche_mode", "auto")).strip().lower(),
+                "prompt": str(prompts.get("niche", "")).strip(),
+            },
+            "hashtag": {
+                "enabled": bool(ai_options.get("enable_hashtags", False)),
+                "mode": str(ai_options.get("hashtag_mode", "auto")).strip().lower(),
+                "prompt": str(prompts.get("hashtag", "")).strip(),
+            },
+        }
+
+    async def _run_ai(output_dir: str, ctx: JobContext) -> Dict[str, Any]:
+        ai_options = (ctx.meta.get("ai_options") or {})
+        tools = _normalize_tools(ai_options)
+
+        enabled = any(bool(v.get("enabled")) for v in tools.values())
+        if not enabled:
+            return {
+                "enabled": False,
+                "reason": "No AI tools enabled",
+                "tools": tools,
+                "results": {},
+            }
+
+        ctx.meta["ai_options"] = dict(ai_options)
+        ctx.meta["ai_options"]["tools"] = tools
+
+        svc = AIContentService()
+        results = svc.run_enabled_tools(ctx=ctx, output_dir=output_dir)
+        ctx.meta["ai_results"] = results
+        return {
+            "enabled": True,
+            "tools": tools,
+            "results": results,
+        }
+
+    return _run_ai
+
+
+# -----------------------
+# Publish-only variants
+# -----------------------
+def _find_processed_variants(persist_dir: Union[str, Path]) -> Dict[str, str]:
+    base = Path(persist_dir)
+    if not base.exists():
+        return {}
+
+    files: List[Path] = []
+    for ext in VIDEO_EXTS:
+        files.extend(base.rglob(f"*{ext}"))
+
+    files = [f for f in files if f.is_file() and f.stat().st_size > 1024]
+    if not files:
+        return {}
+
+    best_portrait: Optional[Path] = None
+    best_landscape: Optional[Path] = None
+    best_other: Optional[Path] = None
+
+    for f in files:
+        name = f.name.lower()
+        if "portrait" in name:
+            if best_portrait is None or f.stat().st_size > best_portrait.stat().st_size:
+                best_portrait = f
+        elif "landscape" in name:
+            if best_landscape is None or f.stat().st_size > best_landscape.stat().st_size:
+                best_landscape = f
+        else:
+            if best_other is None or f.stat().st_size > best_other.stat().st_size:
+                best_other = f
+
+    out: Dict[str, str] = {}
+    if best_portrait:
+        out["portrait"] = str(best_portrait)
+    if best_landscape:
+        out["landscape"] = str(best_landscape)
+
+    if not out:
+        out["video"] = str(best_other or max(files, key=lambda x: x.stat().st_size))
+
+    return out
+
+
+# -----------------------
+# Status helper
+# -----------------------
+@dataclass
+class _State:
+    value: str
+
+
+@dataclass
+class _Status:
+    state: _State
+    stage: str
+    progress: float
+    message: str
+    error: Optional[str] = None
+    started_at: str = ""
+    finished_at: str = ""
+
+
+def _set_ctx_status(ctx: JobContext, *, state: str, stage: str, progress: float, message: str, error: Optional[str] = None):
+    now = datetime.now(timezone.utc).isoformat()
+    st = _Status(
+        state=_State(state),
+        stage=stage,
+        progress=float(progress),
+        message=message,
+        error=error,
+        started_at=now,
+        finished_at=now,
+    )
+    try:
+        setattr(ctx, "status", st)
+    except Exception:
+        pass
+
+
+# -----------------------
 # Service wrappers
 # -----------------------
 def build_download_fn(youtube_service: Any) -> Callable[[str, str, JobContext], Any]:
@@ -176,43 +352,22 @@ def build_download_fn(youtube_service: Any) -> Callable[[str, str, JobContext], 
             method = m
             break
 
-    # fallback ke core.youtube_download
-    downloader_fn = None
-    if method is None:
-        try:
-            import core.youtube_download as yd  # type: ignore
-            cls = getattr(yd, "YouTubeService", None) or getattr(yd, "YouTubeDownloader", None) or getattr(yd, "YoutubeDownloader", None)
-            inst = cls() if cls and callable(cls) else None
-            if inst:
-                for n in ["download", "download_video", "download_to_file", "fetch", "run"]:
-                    m = getattr(inst, n, None)
-                    if callable(m):
-                        downloader_fn = m
-                        break
-            if downloader_fn is None:
-                for n in ["download", "download_video", "download_youtube", "download_youtube_video", "run_download"]:
-                    f = getattr(yd, n, None)
-                    if callable(f):
-                        downloader_fn = f
-                        break
-        except Exception:
-            downloader_fn = None
-
     async def _download(url: str, temp_dir: str, ctx: JobContext) -> str:
-        fn = method or downloader_fn
-        if not fn:
-            raise RuntimeError("Tidak ada downloader. Pastikan YouTubeService punya download* atau core/youtube_download.py ada.")
+        if not method:
+            raise RuntimeError("No YouTube download method found in YouTubeService.")
 
-        res = await _call_best_effort(fn, [
-            ((url, temp_dir, ctx), {}),
-            ((url, temp_dir), {}),
-            ((url,), {}),
-            ((), {"url": url, "temp_dir": temp_dir, "ctx": ctx}),
-            ((), {"url": url, "temp_dir": temp_dir}),
-            ((), {"url": url}),
-        ])
+        res = await _call_best_effort(
+            method,
+            [
+                ((url, temp_dir, ctx), {}),
+                ((url, temp_dir), {}),
+                ((url,), {}),
+                ((), {"url": url, "temp_dir": temp_dir, "ctx": ctx}),
+                ((), {"url": url, "temp_dir": temp_dir}),
+                ((), {"url": url}),
+            ],
+        )
 
-        # pilih mp4 terbesar di temp_dir
         d = Path(temp_dir)
         best = None
         best_sz = 0
@@ -228,27 +383,33 @@ def build_download_fn(youtube_service: Any) -> Callable[[str, str, JobContext], 
             return res
         if best:
             return best
-        raise RuntimeError("Download selesai tapi video valid tidak ditemukan.")
+        raise RuntimeError("Download finished but no valid video was found.")
 
     return _download
 
 
 def build_process_fn() -> Callable[[str, str, str, str, JobContext], Any]:
-    from core.video_processor import VideoProcessor  # local import
+    from core.video_processor import VideoProcessor
 
     vp = VideoProcessor()
     to_portrait = getattr(vp, "to_portrait", None)
     to_landscape = getattr(vp, "to_landscape", None)
     if not callable(to_portrait) or not callable(to_landscape):
-        raise RuntimeError("VideoProcessor harus punya method to_portrait & to_landscape")
+        raise RuntimeError("VideoProcessor must implement to_portrait & to_landscape")
 
     def _invoke(vp_method: Callable[..., Any], *, input_path: str, output_path: str, output_dir: str, temp_dir: str, ctx: JobContext):
         mapping = {
-            "input_path": input_path, "video_path": input_path, "path": input_path,
-            "output_path": output_path, "out_path": output_path,
-            "output_dir": output_dir, "out_dir": output_dir,
-            "temp_dir": temp_dir, "tmp_dir": temp_dir,
-            "ctx": ctx, "context": ctx,
+            "input_path": input_path,
+            "video_path": input_path,
+            "path": input_path,
+            "output_path": output_path,
+            "out_path": output_path,
+            "output_dir": output_dir,
+            "out_dir": output_dir,
+            "temp_dir": temp_dir,
+            "tmp_dir": temp_dir,
+            "ctx": ctx,
+            "context": ctx,
         }
         sig = inspect.signature(vp_method)
         kwargs = {k: mapping[k] for k in sig.parameters.keys() if k in mapping}
@@ -268,9 +429,9 @@ def build_process_fn() -> Callable[[str, str, str, str, JobContext], Any]:
 
     async def _process(input_path: str, format_mode: str, output_dir: str, temp_dir: str, ctx: JobContext) -> Dict[str, str]:
         if not _exists_file(input_path):
-            raise RuntimeError(f"Input video tidak ditemukan: {input_path}")
+            raise RuntimeError(f"Input video not found: {input_path}")
         if _size(input_path) < 1024:
-            raise RuntimeError(f"Input video invalid/kecil: {input_path}")
+            raise RuntimeError(f"Input video is invalid/too small: {input_path}")
 
         Path(output_dir).mkdir(parents=True, exist_ok=True)
         stem = Path(input_path).stem
@@ -281,13 +442,30 @@ def build_process_fn() -> Callable[[str, str, str, str, JobContext], Any]:
         results: Dict[str, str] = {}
 
         if mode in ("portrait", "both"):
-            res = await _call_best_effort(to_portrait, _invoke(to_portrait, input_path=input_path, output_path=out_portrait, output_dir=output_dir, temp_dir=temp_dir, ctx=ctx))
-            results["portrait"] = res if isinstance(res, str) and _exists_file(res) else out_portrait
+            res = await _call_best_effort(
+                to_portrait,
+                _invoke(to_portrait, input_path=input_path, output_path=out_portrait, output_dir=output_dir, temp_dir=temp_dir, ctx=ctx),
+            )
+            portrait_path = res if isinstance(res, str) and _exists_file(res) else out_portrait
+            if not _exists_file(portrait_path) or _size(portrait_path) < 1024:
+                raise RuntimeError(f"Portrait output not created or invalid: {portrait_path}")
+            results["portrait"] = portrait_path
 
         if mode in ("landscape", "both"):
-            res = await _call_best_effort(to_landscape, _invoke(to_landscape, input_path=input_path, output_path=out_landscape, output_dir=output_dir, temp_dir=temp_dir, ctx=ctx))
-            results["landscape"] = res if isinstance(res, str) and _exists_file(res) else out_landscape
+            res = await _call_best_effort(
+                to_landscape,
+                _invoke(to_landscape, input_path=input_path, output_path=out_landscape, output_dir=output_dir, temp_dir=temp_dir, ctx=ctx),
+            )
+            landscape_path = res if isinstance(res, str) and _exists_file(res) else out_landscape
+            if not _exists_file(landscape_path) or _size(landscape_path) < 1024:
+                raise RuntimeError(f"Landscape output not created or invalid: {landscape_path}")
+            results["landscape"] = landscape_path
 
+        if not results:
+            raise RuntimeError(f"No output generated for format_mode={mode}")
+
+        ctx.meta["processed_outputs"] = dict(results)
+        ctx.meta["persist_dir"] = str(Path(output_dir))
         return results
 
     return _process
@@ -295,48 +473,67 @@ def build_process_fn() -> Callable[[str, str, str, str, JobContext], Any]:
 
 def build_upload_fn(cloudinary_service: Any) -> Callable[[str, str, JobContext, Optional[Dict[str, Any]]], Any]:
     method = None
-    for n in ["upload_video", "upload", "upload_file", "upload_asset"]:
+    for n in ["upload_video", "upload", "upload_file", "upload_asset", "upload_media", "upload_to_cloudinary"]:
         m = getattr(cloudinary_service, n, None)
         if callable(m):
             method = m
             break
+
     if method is None:
-        raise RuntimeError("CloudinaryService tidak punya method upload/upload_video/...")
+        available = [x for x in dir(cloudinary_service) if not x.startswith("_")]
+        raise RuntimeError(f"CloudinaryService tidak punya method upload yang cocok. Available methods: {available}")
 
     async def _upload(file_path: str, variant: str, ctx: JobContext, metadata: Optional[Dict[str, Any]] = None) -> Any:
-        res = await _call_best_effort(method, [
-            ((file_path, variant, ctx), {}),
-            ((file_path, variant), {}),
-            ((file_path,), {}),
-            ((), {"file_path": file_path, "variant": variant, "ctx": ctx, "metadata": metadata or {}}),
-        ])
+        res = await _call_best_effort(
+            method,
+            [
+                ((file_path, variant, ctx), {}),
+                ((file_path, variant), {}),
+                ((file_path,), {}),
+                ((), {"file_path": file_path, "variant": variant, "ctx": ctx, "metadata": metadata or {}}),
+                ((), {"file_path": file_path}),
+                ((), {"path": file_path}),
+            ],
+        )
+
         if isinstance(res, str):
             return {"url": _normalize_url(res)}
+
         if isinstance(res, dict):
-            if "url" in res:
-                res["url"] = _normalize_url(str(res["url"]))
+            url = (
+                res.get("url")
+                or res.get("secure_url")
+                or res.get("cloudinary_url")
+                or res.get("video_url")
+            )
+            if url:
+                res["url"] = _normalize_url(str(url))
             return res
+
         return {"result": res}
 
     return _upload
 
 
+def build_upload_skip_fn() -> Callable[[str, str, JobContext, Optional[Dict[str, Any]]], Any]:
+    async def _skip(file_path: str, variant: str, ctx: JobContext, metadata: Optional[Dict[str, Any]] = None) -> Any:
+        return {"skipped": True, "variant": variant, "file_path": str(file_path)}
+
+    return _skip
+
+
 def build_schedule_fn(repliz_service: Any) -> Callable[[Any, Any, JobContext], Any]:
-    """
-    ✅ FIX 400: scheduleAt harus ...000Z + medias harus ada thumbnail (best effort)
-    """
     create_fn = getattr(repliz_service, "create_schedule", None)
     if not callable(create_fn):
         create_fn = getattr(repliz_service, "schedule", None)
     if not callable(create_fn):
-        raise RuntimeError("ReplizService tidak punya create_schedule atau schedule")
+        raise RuntimeError("ReplizService must implement create_schedule(payload) or schedule(payload)")
 
     async def _schedule(uploads: Any, accounts: Any, ctx: JobContext) -> Dict[str, Any]:
         urls = _uploads_to_variant_urls(uploads)
         if not urls:
-            raise RuntimeError("Tidak ada url pada uploads untuk schedule")
+            raise RuntimeError("No urls found in uploads for scheduling.")
 
-        # normalize accounts -> list ids
         account_ids: List[str] = []
         if isinstance(accounts, list):
             for a in accounts:
@@ -350,14 +547,13 @@ def build_schedule_fn(repliz_service: Any) -> Callable[[Any, Any, JobContext], A
             account_ids = [accounts]
 
         if not account_ids:
-            raise RuntimeError("Account IDs kosong. Isi di UI (Account IDs).")
-
+            raise RuntimeError("Account IDs are empty. Select accounts in Repliz page.")
         if len(account_ids) > MAX_REPLIZ_ACCOUNTS:
-            raise RuntimeError(f"Max Repliz multi account {MAX_REPLIZ_ACCOUNTS}. Kamu isi: {len(account_ids)}")
+            raise RuntimeError(f"Max Repliz multi-account is {MAX_REPLIZ_ACCOUNTS}. You provided {len(account_ids)}.")
 
         variant_map = ctx.meta.get("variant_account_map") or {}
-
         base_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+
         title = (ctx.meta.get("title") or "GNX Auto Schedule")
         desc = (ctx.meta.get("description") or "Auto generated by GNX AI Production Studio")
 
@@ -391,9 +587,8 @@ def build_schedule_fn(repliz_service: Any) -> Callable[[Any, Any, JobContext], A
                 except Exception as e:
                     results["failed"].append({"variant": variant, "accountId": acc_id, "error": str(e)})
 
-        # kalau semuanya gagal -> raise biar user langsung tahu
         if not any_success:
-            raise RuntimeError(f"Schedule gagal semua. Contoh error: {results['failed'][:1]}")
+            raise RuntimeError(f"Scheduling failed for all targets. Example: {results['failed'][:1]}")
 
         return results
 
@@ -401,7 +596,7 @@ def build_schedule_fn(repliz_service: Any) -> Callable[[Any, Any, JobContext], A
 
 
 # -----------------------
-# MAIN: Engine imports this
+# Main
 # -----------------------
 async def run_gnx_job(
     *,
@@ -414,45 +609,84 @@ async def run_gnx_job(
     variant_account_map: Optional[Dict[str, Any]] = None,
     event_handler: Optional[Callable[[PipelineEvent], Any]] = None,
 ) -> JobContext:
-    load_dotenv_best_effort(Path.cwd())
+    load_dotenv_best_effort()
+
+    enable_upload = bool(payload.get("enable_upload", False))
+    enable_schedule = bool(payload.get("enable_schedule", False)) and enable_upload
+
+    if len(account_ids) > MAX_REPLIZ_ACCOUNTS:
+        raise RuntimeError(f"Max Repliz multi-account is {MAX_REPLIZ_ACCOUNTS}. You provided {len(account_ids)}.")
 
     source_kind, source_value = _payload_source(payload)
 
     settings = JobSettings(
         format_mode=str(payload.get("format_mode") or payload.get("format") or "both"),
-        output_dir=str(payload.get("output_dir", "outputs")),
-        temp_dir=str(payload.get("temp_dir", "temp")),
+        output_dir=str(payload.get("output_dir") or _default_output_dir()),
+        temp_dir=str(payload.get("temp_dir") or _default_temp_dir()),
     )
 
     ctx = JobContext(source=JobSource(kind=source_kind, value=source_value), settings=settings)
     if job_id:
         ctx.job_id = job_id
 
-    if len(account_ids) > MAX_REPLIZ_ACCOUNTS:
-        raise RuntimeError(f"Max Repliz multi account {MAX_REPLIZ_ACCOUNTS}. Kamu isi: {len(account_ids)}")
-
     ctx.meta["accounts"] = _account_dicts(account_ids)
+    ctx.meta["ai_options"] = payload.get("ai_options") or {}
+    ctx.meta["duration_policy"] = payload.get("duration_policy") or {}
+    ctx.meta["face_centering"] = payload.get("face_centering") or {}
+    ctx.meta["quality_profile"] = payload.get("quality_profile") or payload.get("quality") or "1080p"
+
     if variant_account_map:
         ctx.meta["variant_account_map"] = variant_account_map
 
+    output_dir = str(payload.get("output_dir") or _default_output_dir())
+    temp_dir = str(payload.get("temp_dir") or _default_temp_dir())
+    format_mode = str(payload.get("format_mode") or payload.get("format") or "both")
+
     if source_kind == "youtube":
-        ctx.services["download_fn"] = build_download_fn(youtube_service)
-    ctx.services["process_fn"] = build_process_fn()
-    ctx.services["upload_fn"] = build_upload_fn(cloudinary_service)
-    ctx.services["schedule_fn"] = build_schedule_fn(repliz_service)
+        download_fn = build_download_fn(youtube_service)
+        input_path = await download_fn(source_value, temp_dir, ctx)
+        _set_ctx_status(ctx, state="RUNNING", stage="ResolveSource", progress=0.15, message="YouTube downloaded")
+    else:
+        input_path = source_value
+        _set_ctx_status(ctx, state="RUNNING", stage="ResolveSource", progress=0.15, message="Offline source ready")
 
-    options = DefaultPipelineOptions(
-        include_schedule=bool(payload.get("enable_schedule", True)),
-        include_persist=True,
-    )
+    process_fn = build_process_fn()
+    processed_outputs = await process_fn(input_path, format_mode, output_dir, temp_dir, ctx)
+    ctx.meta["processed_outputs"] = processed_outputs
+    _set_ctx_status(ctx, state="RUNNING", stage="ProcessVideo", progress=0.45, message="Video processed")
 
-    runner = build_default_gnx_runner(
-        event_handler=event_handler,
-        config=PipelineRunnerConfig(auto_progress=True, raise_on_error=False),
-        options=options,
-    )
+    ai_stage_fn = build_ai_stage_fn()
+    try:
+        ai_result = await ai_stage_fn(output_dir, ctx)
+        ctx.meta["ai_result"] = ai_result
+        _set_ctx_status(ctx, state="RUNNING", stage="AIProcessing", progress=0.65, message="AI stage completed")
+    except Exception as e:
+        ctx.meta["ai_result"] = {"enabled": False, "error": str(e)}
+        print(f"[AI_STAGE_ERROR] {e}")
+        _set_ctx_status(ctx, state="RUNNING", stage="AIProcessing", progress=0.65, message=f"AI stage skipped/failed: {e}")
 
-    return await runner.run(ctx)
+    uploads: Dict[str, Any] = {}
+    if enable_upload:
+        upload_fn = build_upload_fn(cloudinary_service)
+        for variant, fp in processed_outputs.items():
+            uploads[variant] = await upload_fn(fp, variant, ctx, metadata={"ai_result": ctx.meta.get("ai_result")})
+        ctx.meta["uploads"] = uploads
+        _set_ctx_status(ctx, state="RUNNING", stage="UploadCloudinary", progress=0.82, message="Cloudinary upload completed")
+    else:
+        ctx.meta["uploads"] = {"skipped": True}
+        _set_ctx_status(ctx, state="RUNNING", stage="UploadCloudinary", progress=0.82, message="Cloudinary upload skipped")
+
+    if enable_schedule:
+        schedule_fn = build_schedule_fn(repliz_service)
+        schedule_result = await schedule_fn(ctx.meta["uploads"], ctx.meta.get("accounts") or [], ctx)
+        ctx.meta["schedule_result"] = schedule_result
+        _set_ctx_status(ctx, state="SUCCESS", stage="ScheduleRepliz", progress=1.0, message="Repliz scheduling completed")
+    else:
+        ctx.meta["schedule_result"] = {}
+        _set_ctx_status(ctx, state="SUCCESS", stage="PersistContext", progress=1.0, message="Pipeline done")
+
+    ctx.meta["persist_dir"] = output_dir
+    return ctx
 
 
 __all__ = ["run_gnx_job"]

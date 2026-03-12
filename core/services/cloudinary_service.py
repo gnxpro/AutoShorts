@@ -1,219 +1,175 @@
-import cloudinary
-import cloudinary.uploader
-import tempfile
 import os
-import time
 from pathlib import Path
+from typing import Optional, Dict, Any
+
+import requests
 
 
-from core.config_manager import ConfigManager
+class CloudinaryServiceError(Exception):
+    pass
 
 
 class CloudinaryService:
-    """
-    Service untuk upload video ke Cloudinary.
-    Menangani upload file video besar dan validasi file.
-    """
+    def __init__(
+        self,
+        cloud_name: str,
+        upload_preset: str,
+        folder: Optional[str] = None,
+        secure_delivery: bool = True,
+        timeout: int = 120,
+    ):
+        self.cloud_name = str(cloud_name or "").strip()
+        self.upload_preset = str(upload_preset or "").strip()
+        self.folder = str(folder or os.getenv("CLOUDINARY_FOLDER", "")).strip()
+        self.secure_delivery = bool(secure_delivery)
+        self.timeout = int(timeout)
 
-    def __init__(self):
-        """Initialize Cloudinary service dengan credentials dari config."""
-        self.config = ConfigManager()
-        cloud_conf = self.config.get_cloudinary()
+        if not self.cloud_name:
+            raise CloudinaryServiceError("Cloudinary cloud_name is required.")
+        if not self.upload_preset:
+            raise CloudinaryServiceError("Cloudinary upload_preset is required.")
 
-        self.cloud_name = cloud_conf.get("cloud_name")
-        self.api_key = cloud_conf.get("api_key")
-        self.api_secret = cloud_conf.get("api_secret")
+    # ---------------------------------------------------------
+    # Helpers
+    # ---------------------------------------------------------
 
-        if not all([self.cloud_name, self.api_key, self.api_secret]):
-            raise Exception("Cloudinary credentials missing")
+    def _upload_url(self) -> str:
+        return f"https://api.cloudinary.com/v1_1/{self.cloud_name}/video/upload"
 
-        cloudinary.config(
-            cloud_name=self.cloud_name,
-            api_key=self.api_key,
-            api_secret=self.api_secret,
-            secure=True
-        )
+    def _normalize_result(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        secure_url = str(payload.get("secure_url") or "").strip()
+        url = str(payload.get("url") or "").strip()
+        public_id = str(payload.get("public_id") or "").strip()
+        resource_type = str(payload.get("resource_type") or "").strip()
+        original_filename = str(payload.get("original_filename") or "").strip()
+        bytes_size = payload.get("bytes")
 
-    def _validate_file(self, file_path):
-        """
-        Validate that file exists and is readable.
-        
-        Args:
-            file_path (str): Path to file
-            
-        Raises:
-            FileNotFoundError: If file doesn't exist
-            ValueError: If file is not readable or too small
-        """
-        if not file_path:
-            raise ValueError("file_path cannot be empty")
-        
-        # Convert to Path object for better handling
-        path = Path(file_path)
-        
-        if not path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
-        
-        if not path.is_file():
-            raise ValueError(f"Path is not a file: {file_path}")
-        
-        # Check if file is readable
-        if not os.access(file_path, os.R_OK):
-            raise PermissionError(f"File is not readable: {file_path}")
-        
-        # Check file size (must be at least 1KB)
-        file_size = path.stat().st_size
-        if file_size < 1024:
-            raise ValueError(f"File is too small ({file_size} bytes): {file_path}")
-        
-        return True
+        final_url = secure_url if self.secure_delivery and secure_url else (secure_url or url)
 
-    def _wait_for_file(self, file_path, max_wait_seconds=30):
-        """
-        Wait for file to be completely written to disk.
-        
-        Useful when file is being written by another process.
-        
-        Args:
-            file_path (str): Path to file
-            max_wait_seconds (int): Maximum time to wait
-            
-        Raises:
-            TimeoutError: If file is not ready within timeout
-        """
-        start_time = time.time()
-        last_size = 0
-        stable_count = 0
-        
-        while time.time() - start_time < max_wait_seconds:
-            try:
-                if os.path.exists(file_path):
-                    current_size = os.path.getsize(file_path)
-                    
-                    # If file size hasn't changed for 2 checks, it's probably done
-                    if current_size == last_size and current_size > 0:
-                        stable_count += 1
-                        if stable_count >= 2:
-                            return True
-                    else:
-                        stable_count = 0
-                    
-                    last_size = current_size
-            except OSError:
-                pass
-            
-            time.sleep(0.5)
-        
-        raise TimeoutError(f"File not ready after {max_wait_seconds} seconds: {file_path}")
+        return {
+            "url": final_url,
+            "secure_url": secure_url,
+            "public_id": public_id,
+            "resource_type": resource_type,
+            "original_filename": original_filename,
+            "bytes": bytes_size,
+            "raw": payload,
+        }
 
-    def test_connection(self):
-        """
-        Test Cloudinary connection.
-        
-        Returns:
-            bool: True if connection successful
-            
-        Raises:
-            Exception: If connection fails
-        """
+    def _validate_file(self, file_path: str) -> Path:
+        p = Path(file_path)
+        if not p.exists() or not p.is_file():
+            raise CloudinaryServiceError(f"File not found: {file_path}")
+        if p.stat().st_size < 1024:
+            raise CloudinaryServiceError(f"File is too small or invalid: {file_path}")
+        return p
+
+    # ---------------------------------------------------------
+    # Public upload API
+    # ---------------------------------------------------------
+
+    def upload(
+        self,
+        file_path: str,
+        variant: Optional[str] = None,
+        ctx: Any = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        file_obj = self._validate_file(file_path)
+
+        data = {
+            "upload_preset": self.upload_preset,
+        }
+
+        folder_value = self.folder
+        if not folder_value and metadata and isinstance(metadata, dict):
+            folder_value = str(metadata.get("folder", "")).strip()
+
+        if folder_value:
+            data["folder"] = folder_value
+
+        public_id = ""
         try:
-            # Create temporary small file
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp:
-                tmp.write(b"GNX Cloudinary Test")
-                tmp_path = tmp.name
+            if ctx is not None:
+                job_id = str(getattr(ctx, "job_id", "") or "").strip()
+                if job_id:
+                    stem = file_obj.stem
+                    suffix = str(variant or "").strip()
+                    public_id = f"{job_id}_{stem}"
+                    if suffix:
+                        public_id += f"__{suffix}"
+        except Exception:
+            public_id = ""
 
-            # Upload small raw file
-            result = cloudinary.uploader.upload(
-                tmp_path,
-                resource_type="raw",
-                folder="gnx_test"
-            )
+        if public_id:
+            data["public_id"] = public_id
 
-            public_id = result.get("public_id")
+        if metadata and isinstance(metadata, dict):
+            tags = metadata.get("tags")
+            if isinstance(tags, list) and tags:
+                data["tags"] = ",".join([str(x).strip() for x in tags if str(x).strip()])
 
-            # Delete uploaded test file
-            if public_id:
-                cloudinary.uploader.destroy(
-                    public_id,
-                    resource_type="raw"
+            context_parts = []
+            for key in ("title", "source", "variant"):
+                value = metadata.get(key)
+                if value:
+                    context_parts.append(f"{key}={value}")
+            if context_parts:
+                data["context"] = "|".join(context_parts)
+
+        with file_obj.open("rb") as f:
+            files = {
+                "file": (file_obj.name, f, "video/mp4")
+            }
+
+            try:
+                r = requests.post(
+                    self._upload_url(),
+                    data=data,
+                    files=files,
+                    timeout=self.timeout,
                 )
+            except requests.RequestException as e:
+                raise CloudinaryServiceError(f"Cloudinary request failed: {e}")
 
-            os.remove(tmp_path)
-
-            return True
-
-        except Exception as e:
-            raise Exception(f"Cloudinary connection failed: {str(e)}")
-
-    def upload_video(self, file_path, wait_for_file=True, max_wait_seconds=30):
-        """
-        Upload video to Cloudinary.
-        
-        Args:
-            file_path (str): Path to video file
-            wait_for_file (bool): Wait for file to be completely written
-            max_wait_seconds (int): Maximum time to wait for file
-            
-        Returns:
-            str: Secure URL of uploaded video
-            
-        Raises:
-            FileNotFoundError: If file doesn't exist
-            ValueError: If file is invalid
-            Exception: If upload fails
-        """
-        
-        # Normalize path
-        file_path = os.path.abspath(file_path)
-        
-        # Wait for file to be ready if requested
-        if wait_for_file:
-            try:
-                self._wait_for_file(file_path, max_wait_seconds)
-            except TimeoutError as e:
-                raise TimeoutError(f"Video file not ready: {e}")
-        
-        # Validate file
         try:
-            self._validate_file(file_path)
-        except (FileNotFoundError, ValueError, PermissionError) as e:
-            raise ValueError(f"Invalid video file: {e}")
-        
-        # Get file info for logging
-        file_size = os.path.getsize(file_path)
-        file_name = os.path.basename(file_path)
-        
-        try:
-            # Upload large video file
-            result = cloudinary.uploader.upload_large(
-                file_path,
-                resource_type="video",
-                folder="gnx_videos",
-                timeout=600  # 10 minutes timeout for large files
-            )
-            
-            secure_url = result.get("secure_url")
-            
-            if not secure_url:
-                raise Exception("Upload successful but no URL returned")
-            
-            return secure_url
-            
-        except cloudinary.exceptions.Error as e:
-            raise Exception(f"Cloudinary upload failed: {str(e)}")
-        except Exception as e:
-            raise Exception(f"Upload error: {str(e)}")
+            payload = r.json()
+        except Exception:
+            payload = None
 
+        if r.status_code >= 400:
+            if isinstance(payload, dict):
+                err = payload.get("error") or {}
+                msg = err.get("message") or r.text
+            else:
+                msg = r.text
+            raise CloudinaryServiceError(msg or f"Cloudinary upload failed with HTTP {r.status_code}")
 
-# Example usage for testing
-if __name__ == "__main__":
-    try:
-        service = CloudinaryService()
-        
-        # Test connection
-        print("Testing Cloudinary connection...")
-        if service.test_connection():
-            print("✓ Connection successful!")
-        
-    except Exception as e:
-        print(f"✗ Error: {e}")
+        if not isinstance(payload, dict):
+            raise CloudinaryServiceError("Cloudinary upload returned an invalid response.")
+
+        final = self._normalize_result(payload)
+
+        if not final.get("url"):
+            raise CloudinaryServiceError("Cloudinary upload succeeded but no URL was returned.")
+
+        return final
+
+    # Compatibility aliases
+    def upload_video(
+        self,
+        file_path: str,
+        variant: Optional[str] = None,
+        ctx: Any = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return self.upload(file_path=file_path, variant=variant, ctx=ctx, metadata=metadata)
+
+    def upload_file(
+        self,
+        file_path: str,
+        variant: Optional[str] = None,
+        ctx: Any = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return self.upload(file_path=file_path, variant=variant, ctx=ctx, metadata=metadata)

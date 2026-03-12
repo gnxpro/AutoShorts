@@ -1,297 +1,316 @@
-from __future__ import annotations
-
-import base64
 import json
-import os
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-from urllib import request, parse, error
+import base64
+from typing import Any, Dict, Optional, List
+
+import requests
 
 
-class ReplizAuthError(RuntimeError):
+class ReplizAuthError(Exception):
     pass
 
 
-class ReplizAPIError(RuntimeError):
-    def __init__(self, message: str, status_code: Optional[int] = None, body: Optional[str] = None):
-        super().__init__(message)
-        self.status_code = status_code
-        self.body = body
-
-
-@dataclass
-class ReplizConfig:
-    base_url: str = "https://api.repliz.com"
-    access_key_env: str = "REPLIZ_ACCESS_KEY"
-    secret_key_env: str = "REPLIZ_SECRET_KEY"
-    timeout_s: int = 30
-    debug_env: str = "REPLIZ_DEBUG"
-
-
-def _load_env_manual(env_path: Path) -> None:
-    if not env_path.exists():
-        return
-    for raw in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.lower().startswith("export "):
-            line = line[7:].strip()
-        if "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        k = k.strip()
-        v = v.strip().strip('"').strip("'")
-        if k and k not in os.environ:
-            os.environ[k] = v
-
-
-def load_dotenv_best_effort(root_dir: Optional[Path] = None) -> None:
-    root = root_dir or Path.cwd()
-    try:
-        from dotenv import load_dotenv  # type: ignore
-        load_dotenv(dotenv_path=root / ".env", override=False)
-        load_dotenv(dotenv_path=root / ".env.local", override=False)
-    except Exception:
-        _load_env_manual(root / ".env")
-        _load_env_manual(root / ".env.local")
-
-
-def _iso_z(dt: datetime) -> str:
-    dt = dt.astimezone(timezone.utc)
-    return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-
-
-def _normalize_url(u: str) -> str:
-    u = (u or "").strip()
-    if not u:
-        return u
-    if u.startswith("ps://"):
-        return "htt" + u
-    if u.startswith("//"):
-        return "https:" + u
-    if u.startswith("res.cloudinary.com"):
-        return "https://" + u
-    return u
-
-
-def _guess_thumbnail(video_url: str) -> Optional[str]:
-    u = _normalize_url(video_url)
-    if not u:
-        return None
-    if "res.cloudinary.com" in u and "/video/upload/" in u:
-        thumb = u.replace("/video/upload/", "/video/upload/so_0,f_jpg/")
-        if thumb.lower().endswith(".mp4"):
-            thumb = thumb[:-4] + ".jpg"
-        return thumb
-    if u.lower().endswith(".mp4"):
-        return u[:-4] + ".jpg"
-    return None
+class ReplizAPIError(Exception):
+    pass
 
 
 class ReplizService:
-    """
-    Basic Authorization:
-      Authorization: Basic base64("ACCESS_KEY:SECRET_KEY")
+    def __init__(
+        self,
+        base_url: str = "",
+        access_key: str = "",
+        secret_key: str = "",
+        timeout: int = 30,
+    ):
+        self.base_url = (base_url or "").strip().rstrip("/")
+        self.access_key = (access_key or "").strip()
+        self.secret_key = (secret_key or "").strip()
+        self.timeout = timeout
 
-    Base URL boleh:
-      https://api.repliz.com/public
-    akan dinormalisasi jadi:
-      https://api.repliz.com
-    """
+    # =========================================================
+    # CONFIG
+    # =========================================================
 
-    def __init__(self, config: Optional[ReplizConfig] = None):
-        self.config = config or ReplizConfig()
-        load_dotenv_best_effort(Path.cwd())
+    def set_credentials(self, base_url: str, access_key: str, secret_key: str):
+        self.base_url = (base_url or "").strip().rstrip("/")
+        self.access_key = (access_key or "").strip()
+        self.secret_key = (secret_key or "").strip()
 
-        self._access_key: Optional[str] = None
-        self._secret_key: Optional[str] = None
-        self._base_url: Optional[str] = None
+    def is_configured(self) -> bool:
+        return bool(self.base_url and self.access_key and self.secret_key)
 
-    def set_credentials(self, *, base_url: str, access_key: str, secret_key: str) -> None:
-        base = (base_url or "").strip().rstrip("/")
-        if base.endswith("/public"):
-            base = base[:-7].rstrip("/")
-        self._base_url = base
-        self._access_key = (access_key or "").strip()
-        self._secret_key = (secret_key or "").strip()
+    def _ensure_configured(self):
+        if not self.is_configured():
+            raise ReplizAuthError(
+                "Repliz is not fully configured. Please fill Base URL, Access Key, and Secret Key."
+            )
 
-    def _resolve_base_url(self) -> str:
-        return (self._base_url or self.config.base_url).rstrip("/")
-
-    def _resolve_keys(self) -> tuple[str, str]:
-        access = (self._access_key or os.getenv(self.config.access_key_env, "").strip())
-        secret = (self._secret_key or os.getenv(self.config.secret_key_env, "").strip())
-        if not access or not secret:
-            raise ReplizAuthError("Repliz credentials belum diisi. Isi Access Key & Secret Key di menu Repliz.")
-        return access, secret
-
-    def _basic_auth_header(self) -> str:
-        access, secret = self._resolve_keys()
-        token = base64.b64encode(f"{access}:{secret}".encode("utf-8")).decode("utf-8")
-        return f"Basic {token}"
+    def _url(self, path: str) -> str:
+        path = (path or "").strip()
+        if not path.startswith("/"):
+            path = "/" + path
+        return f"{self.base_url}{path}"
 
     def _headers(self) -> Dict[str, str]:
-        # Swagger menggunakan 'Authorization'
+        token = base64.b64encode(
+            f"{self.access_key}:{self.secret_key}".encode("utf-8")
+        ).decode("utf-8")
+
         return {
+            "Authorization": f"Basic {token}",
             "accept": "application/json",
-            "content-type": "application/json",
-            "Authorization": self._basic_auth_header(),
+            "Content-Type": "application/json",
         }
 
-    def _request(self, method: str, path: str, *, query: Optional[Dict[str, Any]] = None, json_body: Any = None) -> Any:
-        base = self._resolve_base_url()
-        url = base + path
+    # =========================================================
+    # RESPONSE HANDLING
+    # =========================================================
 
-        if query:
-            qs = parse.urlencode({k: v for k, v in query.items() if v is not None}, doseq=True)
-            url = url + ("&" if "?" in url else "?") + qs
-
-        data = None
-        if json_body is not None:
-            data = json.dumps(json_body).encode("utf-8")
-
-        req = request.Request(url=url, data=data, method=method.upper(), headers=self._headers())
+    def _handle_response(self, response: requests.Response) -> Any:
+        text = response.text or ""
 
         try:
-            with request.urlopen(req, timeout=self.config.timeout_s) as resp:
-                raw = resp.read().decode("utf-8", errors="replace")
-                if not raw:
-                    return {}
-                try:
-                    return json.loads(raw)
-                except Exception:
-                    return {"raw": raw}
+            data = response.json()
+        except Exception:
+            data = None
 
-        except error.HTTPError as e:
-            body = ""
-            try:
-                body = e.read().decode("utf-8", errors="replace")
-            except Exception:
-                pass
-            code = getattr(e, "code", None)
+        if response.status_code in (401, 403):
+            msg = "Unauthorized"
+            if isinstance(data, dict):
+                msg = data.get("message") or data.get("error") or msg
+            raise ReplizAuthError(msg)
 
-            if code == 401:
-                raise ReplizAuthError("401 Unauthorized: invalid authorization header. Pastikan Basic = base64(access:secret).")
-            if code == 402:
-                raise ReplizAPIError("402 Invalid plan", status_code=code, body=body)
-            if code == 400:
-                raise ReplizAPIError(f"HTTP 400: {body[:2000]}", status_code=code, body=body)
+        if response.status_code >= 400:
+            msg = f"HTTP {response.status_code}"
+            if isinstance(data, dict):
+                msg = data.get("message") or data.get("error") or msg
+            elif text:
+                msg = text[:300]
+            raise ReplizAPIError(msg)
 
-            raise ReplizAPIError(f"HTTP {code}: {body[:1200]}", status_code=code, body=body)
+        return data if data is not None else text
 
-        except error.URLError as e:
-            raise ReplizAPIError(f"Network error: {e}") from e
+    def _get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        self._ensure_configured()
+        try:
+            print(f"[REPLIZ] GET {self._url(path)}")
+            r = requests.get(
+                self._url(path),
+                headers=self._headers(),
+                params=params or {},
+                timeout=self.timeout,
+            )
+            return self._handle_response(r)
+        except requests.RequestException as e:
+            raise ReplizAPIError(str(e))
+
+    def _post(self, path: str, payload: Dict[str, Any]) -> Any:
+        self._ensure_configured()
+        try:
+            print(f"[REPLIZ] POST {self._url(path)}")
+            r = requests.post(
+                self._url(path),
+                headers=self._headers(),
+                data=json.dumps(payload or {}),
+                timeout=self.timeout,
+            )
+            return self._handle_response(r)
+        except requests.RequestException as e:
+            raise ReplizAPIError(str(e))
 
     # =========================================================
-    # ✅ Validate keys quickly
+    # BASIC API METHODS
     # =========================================================
+
     def validate_keys(self) -> bool:
-        # endpoint accounts: page & limit wajib
-        _ = self._request("GET", "/public/account", query={"page": 1, "limit": 1})
+        self.get_social_accounts(limit=1)
         return True
 
-    # =========================================================
-    # ✅ Accounts (sesuai Swagger)
-    # =========================================================
-    def get_social_accounts(self, *, page: int = 1, limit: int = 100, search: str = "") -> List[Dict[str, Any]]:
-        page = int(page) if page else 1
-        limit = int(limit) if limit else 10
-        if page <= 0:
-            page = 1
-        if limit <= 0:
-            limit = 10
+    def get_social_accounts(
+        self,
+        page: int = 1,
+        limit: int = 50,
+        search: str = "",
+    ) -> Any:
+        params: Dict[str, Any] = {"page": page, "limit": limit}
+        if search:
+            params["search"] = search
+        return self._get("/account", params=params)
 
-        raw = self._request(
-            "GET",
-            "/public/account",
-            query={"page": page, "limit": limit, "search": (search or "").strip() or None},
+    def get_account(self, account_id: str) -> Any:
+        return self._get(f"/account/{account_id}")
+
+    def get_schedules(
+        self,
+        page: int = 1,
+        limit: int = 10,
+        account_ids: Optional[List[str]] = None,
+    ) -> Any:
+        params: Dict[str, Any] = {"page": page, "limit": limit}
+        if account_ids:
+            params["accountIds"] = account_ids
+        return self._get("/schedule", params=params)
+
+    def create_schedule(self, payload: Dict[str, Any]) -> Any:
+        return self._post("/schedule", payload)
+
+    def schedule(self, payload: Dict[str, Any]) -> Any:
+        return self.create_schedule(payload)
+
+    # =========================================================
+    # LICENSE / PLAN VALIDATION HELPERS
+    # =========================================================
+
+    def _extract_accounts_list(self, data: Any) -> List[Dict[str, Any]]:
+        if isinstance(data, dict):
+            docs = data.get("docs")
+            if isinstance(docs, list):
+                return docs
+        if isinstance(data, list):
+            return data
+        return []
+
+    def _first_non_empty(self, *values):
+        for value in values:
+            if value is None:
+                continue
+            text = str(value).strip()
+            if text:
+                return text
+        return None
+
+    def get_social_accounts_summary(
+        self,
+        limit: int = 200,
+        search: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Returns a normalized summary used by:
+        - license validation
+        - plan binding
+        - UI account summary
+
+        Output:
+        {
+            "repliz_user_id": "...",
+            "repliz_primary_account_id": "...",
+            "social_count": 17,
+            "accounts": [...]
+        }
+        """
+        data = self.get_social_accounts(page=1, limit=limit, search=search)
+        accounts = self._extract_accounts_list(data)
+
+        repliz_user_id = None
+        primary_account_id = None
+
+        if accounts:
+            first = accounts[0] or {}
+
+            repliz_user_id = self._first_non_empty(
+                first.get("userId"),
+                first.get("user_id"),
+                first.get("ownerId"),
+            )
+
+            primary_account_id = self._first_non_empty(
+                first.get("accountId"),
+                first.get("_id"),
+                first.get("id"),
+            )
+
+        # fallback scan if first row incomplete
+        if repliz_user_id is None:
+            for acc in accounts:
+                repliz_user_id = self._first_non_empty(
+                    acc.get("userId"),
+                    acc.get("user_id"),
+                    acc.get("ownerId"),
+                )
+                if repliz_user_id:
+                    break
+
+        if primary_account_id is None:
+            for acc in accounts:
+                primary_account_id = self._first_non_empty(
+                    acc.get("accountId"),
+                    acc.get("_id"),
+                    acc.get("id"),
+                )
+                if primary_account_id:
+                    break
+
+        summary = {
+            "repliz_user_id": repliz_user_id,
+            "repliz_primary_account_id": primary_account_id,
+            "social_count": len(accounts),
+            "accounts": accounts,
+        }
+
+        print(
+            "[REPLIZ] summary | "
+            f"user_id={summary['repliz_user_id']} | "
+            f"primary_account_id={summary['repliz_primary_account_id']} | "
+            f"social_count={summary['social_count']}"
         )
 
-        docs = []
-        if isinstance(raw, dict) and isinstance(raw.get("docs"), list):
-            docs = raw["docs"]
-        elif isinstance(raw, list):
-            docs = raw
+        return summary
 
-        out: List[Dict[str, Any]] = []
-        for it in docs:
-            if not isinstance(it, dict):
-                continue
-            acc_id = it.get("_id") or it.get("id")
-            if not acc_id:
-                continue
-
-            platform = (it.get("type") or it.get("platform") or "").strip().lower()
-            name = (it.get("name") or "").strip()
-            username = (it.get("username") or "").strip()
-            picture = (it.get("picture") or "").strip()
-            is_connected = bool(it.get("isConnected", True))
-
-            out.append({
-                "id": str(acc_id),
-                "platform": platform,
-                "name": name,
-                "username": username,
-                "picture": picture,
-                "isConnected": is_connected,
-                "raw": it,
-            })
-        return out
+    def get_repliz_identity(self) -> Dict[str, Any]:
+        """
+        Short helper for binding checks.
+        """
+        summary = self.get_social_accounts_summary(limit=200)
+        return {
+            "repliz_user_id": summary.get("repliz_user_id"),
+            "repliz_primary_account_id": summary.get("repliz_primary_account_id"),
+            "social_count": summary.get("social_count", 0),
+        }
 
     # =========================================================
-    # Schedule list
+    # SCHEDULING HELPERS
     # =========================================================
-    def list_schedule(self, *, account_id: str, page: int = 1, limit: int = 10) -> Any:
-        page = int(page) if page else 1
-        limit = int(limit) if limit else 10
-        return self._request("GET", "/public/schedule", query={"page": page, "limit": limit, "accountIds": account_id})
 
-    # =========================================================
-    # Create schedule
-    # =========================================================
-    def create_schedule(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        if not payload.get("accountId"):
-            raise ValueError("create_schedule(): payload wajib punya accountId")
-
-        medias = payload.get("medias")
-        if not isinstance(medias, list) or not medias or not medias[0].get("url"):
-            raise ValueError("create_schedule(): payload wajib punya medias=[{type,url}]")
-
-        if not payload.get("scheduleAt"):
-            payload["scheduleAt"] = _iso_z(datetime.now(timezone.utc) + timedelta(minutes=10))
-
-        return self._request("POST", "/public/schedule", json_body=payload)
-
-    # =========================================================
-    # Single/bulk scheduling helper
-    # =========================================================
-    def schedule_one_video(
+    def build_video_schedule_payload(
         self,
-        *,
-        video_url: str,
         account_id: str,
-        title: str,
-        description: str,
-        schedule_at_iso_z: str,
-        thumbnail_url: Optional[str] = None,
+        media_url: str,
+        schedule_at_iso: str,
+        title: str = "",
+        description: str = "",
+        thumbnail_url: str = "",
     ) -> Dict[str, Any]:
-        video_url = _normalize_url(video_url)
-        thumb = thumbnail_url or _guess_thumbnail(video_url)
+        medias = [
+            {
+                "type": "video",
+                "url": media_url,
+                "thumbnail": thumbnail_url or "",
+            }
+        ]
 
-        media_obj: Dict[str, Any] = {"type": "video", "url": video_url}
-        if thumb:
-            media_obj["thumbnail"] = thumb
-
-        payload = {
-            "title": title,
-            "description": description,
+        return {
+            "title": title or "",
+            "description": description or "",
             "type": "video",
-            "medias": [media_obj],
-            "scheduleAt": schedule_at_iso_z,
-            "additionalInfo": {"isAiGenerated": True, "isDraft": False, "collaborators": []},
+            "medias": medias,
+            "scheduleAt": schedule_at_iso,
             "accountId": account_id,
         }
+
+    def schedule_video(
+        self,
+        account_id: str,
+        media_url: str,
+        schedule_at_iso: str,
+        title: str = "",
+        description: str = "",
+        thumbnail_url: str = "",
+    ) -> Any:
+        payload = self.build_video_schedule_payload(
+            account_id=account_id,
+            media_url=media_url,
+            schedule_at_iso=schedule_at_iso,
+            title=title,
+            description=description,
+            thumbnail_url=thumbnail_url,
+        )
         return self.create_schedule(payload)

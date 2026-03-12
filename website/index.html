@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GNX Production Studio</title>
+<title>GNX Production</title>
 <style>
 body{
 font-family:Arial,sans-serif;
@@ -48,6 +48,7 @@ margin-top:80px;
 </style>
 </head>
 <body>
+
 <nav>
 <div>GNX Production</div>
 <div>
@@ -60,9 +61,9 @@ margin-top:80px;
 
 <section class="hero">
 <h1>GNX Production Studio</h1>
-<p>AI Video Production Toolkit for Creators</p>
+<p>Desktop automation studio for media production workflows.</p>
 
-<a class="btn" href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
+<a class="btn" id="downloadBtn" href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_v0.1.exe">
 Download for Windows
 </a>
 </section>
@@ -70,5 +71,16 @@ Download for Windows
 <footer>
 GNX Production © 2026
 </footer>
+
+<script>
+fetch("version.json")
+.then(r => r.json())
+.then(data => {
+  const btn = document.getElementById("downloadBtn");
+  if (btn && data.download_url) btn.href = data.download_url;
+})
+.catch(() => {});
+</script>
+
 </body>
 </html>

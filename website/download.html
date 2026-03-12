@@ -3,24 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Download GNX Production</title>
+<title>Download | GNX Production</title>
 <style>
 body{
-font-family:Arial;
+font-family:Arial,sans-serif;
 background:#0f172a;
 color:white;
 text-align:center;
-padding:80px;
+padding:80px 20px;
 }
 .btn{
 display:inline-block;
-padding:20px 40px;
+padding:18px 36px;
 background:#22c55e;
 color:black;
 font-size:18px;
 font-weight:bold;
 text-decoration:none;
 border-radius:10px;
+margin-top:20px;
 }
 .btn:hover{
 background:#16a34a;
@@ -28,11 +29,23 @@ background:#16a34a;
 </style>
 </head>
 <body>
-<h1>Download GNX Production Studio</h1>
-<p>Latest version for Windows</p>
-<br>
-<a class="btn" href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
+
+<h1>Download GNX Production</h1>
+<p>Latest desktop installer for Windows</p>
+
+<a class="btn" id="downloadBtn" href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_v0.1.exe">
 Download Installer
 </a>
+
+<script>
+fetch("version.json")
+.then(r => r.json())
+.then(data => {
+  const btn = document.getElementById("downloadBtn");
+  if (btn && data.download_url) btn.href = data.download_url;
+})
+.catch(() => {});
+</script>
+
 </body>
 </html>

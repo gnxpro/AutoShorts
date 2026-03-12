@@ -1,10 +1,286 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>AutoShorts AI</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GNX | AutoShorts AI Studio</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Segoe UI, Arial, sans-serif;
+}
+
+body{
+background:#0b0f1a;
+color:white;
+line-height:1.6;
+}
+
+.container{
+width:90%;
+max-width:1200px;
+margin:auto;
+}
+
+header{
+padding:20px 0;
+border-bottom:1px solid rgba(255,255,255,0.08);
+}
+
+nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.logo{
+font-size:24px;
+font-weight:bold;
+letter-spacing:1px;
+}
+
+.logo span{
+color:#ff4d4d;
+}
+
+nav a{
+color:white;
+text-decoration:none;
+margin-left:20px;
+font-size:14px;
+opacity:0.8;
+}
+
+.hero{
+padding:90px 0;
+text-align:center;
+}
+
+.hero h1{
+font-size:52px;
+margin-bottom:15px;
+}
+
+.hero p{
+max-width:700px;
+margin:auto;
+opacity:0.8;
+font-size:18px;
+}
+
+.buttons{
+margin-top:30px;
+}
+
+.btn{
+padding:14px 26px;
+border-radius:10px;
+text-decoration:none;
+margin:8px;
+display:inline-block;
+font-weight:bold;
+}
+
+.primary{
+background:#ff4d4d;
+color:white;
+}
+
+.secondary{
+border:1px solid rgba(255,255,255,0.2);
+color:white;
+}
+
+section{
+padding:80px 0;
+}
+
+.section-title{
+text-align:center;
+font-size:32px;
+margin-bottom:50px;
+}
+
+.features{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:20px;
+}
+
+.card{
+background:#141b2d;
+padding:25px;
+border-radius:14px;
+border:1px solid rgba(255,255,255,0.05);
+}
+
+.card h3{
+margin-bottom:10px;
+}
+
+.card p{
+opacity:0.75;
+font-size:15px;
+}
+
+.download{
+text-align:center;
+background:#141b2d;
+padding:40px;
+border-radius:16px;
+max-width:600px;
+margin:auto;
+}
+
+footer{
+text-align:center;
+padding:30px 0;
+margin-top:40px;
+opacity:0.6;
+font-size:14px;
+}
+
+</style>
 </head>
+
 <body>
+
+<header>
+<div class="container">
+<nav>
+
+<div class="logo">
+<span>GNX</span> AutoShorts
+</div>
+
+<div>
+<a href="#features">Features</a>
+<a href="#download">Download</a>
+<a href="#about">About</a>
+</div>
+
+</nav>
+</div>
+</header>
+
+<section class="hero">
+<div class="container">
+
 <h1>AutoShorts AI Studio</h1>
-<p>Deployment berhasil.</p>
+
+<p>
+Desktop workflow for AI video production and automated short-form content creation.
+Built for creators who want speed, structure, and full control of their production pipeline.
+</p>
+
+<div class="buttons">
+
+<a class="btn primary" href="#">
+Download for Windows
+</a>
+
+<a class="btn secondary" href="#features">
+View Features
+</a>
+
+</div>
+
+</div>
+</section>
+
+<section id="features">
+<div class="container">
+
+<h2 class="section-title">Core Features</h2>
+
+<div class="features">
+
+<div class="card">
+<h3>AI Production Workflow</h3>
+<p>
+Streamline short-form content creation with an integrated desktop production workflow.
+</p>
+</div>
+
+<div class="card">
+<h3>Video Source Processing</h3>
+<p>
+Import YouTube URLs or local video files and process them directly inside the workspace.
+</p>
+</div>
+
+<div class="card">
+<h3>Desktop Control</h3>
+<p>
+Operate the full production pipeline locally with a stable desktop environment.
+</p>
+</div>
+
+<div class="card">
+<h3>GNX Production Workspace</h3>
+<p>
+Professional workspace designed for structured AI video generation and scheduling.
+</p>
+</div>
+
+</div>
+
+</div>
+</section>
+
+<section id="download">
+
+<div class="container">
+
+<h2 class="section-title">Download</h2>
+
+<div class="download">
+
+<p>
+AutoShorts AI Studio is currently available as a Windows desktop application.
+</p>
+
+<br>
+
+<a class="btn primary" href="#">
+Download Installer
+</a>
+
+</div>
+
+</div>
+
+</section>
+
+<section id="about">
+
+<div class="container">
+
+<h2 class="section-title">About</h2>
+
+<div class="download">
+
+<p><b>Product</b> : AutoShorts AI Studio</p>
+<p><b>Brand</b> : GNX Production</p>
+<p><b>Type</b> : Desktop Application</p>
+<p><b>Platform</b> : Windows</p>
+<p><b>Status</b> : Active Development</p>
+
+</div>
+
+</div>
+
+</section>
+
+<footer>
+
+© 2026 GNX Production — AutoShorts AI Studio
+
+</footer>
+
 </body>
 </html>

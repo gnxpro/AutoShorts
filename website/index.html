@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>GNX Production</title>
 
 <style>
+
 *{
 margin:0;
 padding:0;
@@ -34,15 +36,12 @@ nav{
 display:flex;
 justify-content:space-between;
 align-items:center;
-flex-wrap:wrap;
-gap:12px;
 }
 
 .logo{
 font-size:24px;
 font-weight:bold;
 letter-spacing:1px;
-color:white;
 }
 
 .logo span{
@@ -57,12 +56,8 @@ font-size:14px;
 opacity:0.8;
 }
 
-nav a:hover{
-opacity:1;
-}
-
 .hero{
-padding:90px 0;
+padding:100px 0;
 text-align:center;
 }
 
@@ -72,7 +67,7 @@ margin-bottom:15px;
 }
 
 .hero p{
-max-width:760px;
+max-width:700px;
 margin:auto;
 opacity:0.8;
 font-size:18px;
@@ -89,7 +84,6 @@ text-decoration:none;
 margin:8px;
 display:inline-block;
 font-weight:bold;
-transition:0.2s ease;
 }
 
 .primary{
@@ -97,17 +91,9 @@ background:#ff4d4d;
 color:white;
 }
 
-.primary:hover{
-background:#e63f3f;
-}
-
 .secondary{
 border:1px solid rgba(255,255,255,0.2);
 color:white;
-}
-
-.secondary:hover{
-background:rgba(255,255,255,0.06);
 }
 
 section{
@@ -147,49 +133,25 @@ text-align:center;
 background:#141b2d;
 padding:40px;
 border-radius:16px;
-max-width:700px;
+max-width:600px;
 margin:auto;
-border:1px solid rgba(255,255,255,0.05);
-}
-
-.download p{
-margin-bottom:10px;
-opacity:0.85;
 }
 
 footer{
 text-align:center;
 padding:30px 0;
 margin-top:40px;
-opacity:0.8;
+opacity:0.6;
 font-size:14px;
-border-top:1px solid rgba(255,255,255,0.08);
 }
 
 footer a{
 color:white;
+opacity:0.7;
 text-decoration:none;
-opacity:0.8;
 margin:0 6px;
 }
 
-footer a:hover{
-opacity:1;
-}
-
-@media (max-width: 768px){
-.hero h1{
-font-size:38px;
-}
-
-.hero p{
-font-size:16px;
-}
-
-nav a{
-margin-left:12px;
-}
-}
 </style>
 </head>
 
@@ -197,7 +159,9 @@ margin-left:12px;
 
 <header>
 <div class="container">
+
 <nav>
+
 <div class="logo">
 <span>GNX</span> Production
 </div>
@@ -207,34 +171,44 @@ margin-left:12px;
 <a href="#download">Download</a>
 <a href="#about">About</a>
 </div>
+
 </nav>
+
 </div>
 </header>
 
 <section class="hero">
+
 <div class="container">
 
 <h1>GNX Production</h1>
 
 <p>
-Desktop workflow for AI video production, media processing, and structured content creation.
-Built for creators and production teams who want speed, control, and a clean local workflow.
+Desktop automation studio for media production workflows,
+video processing, and scalable publishing pipelines.
 </p>
 
 <div class="buttons">
-<a class="btn primary" href="#">
+
+<a class="btn primary"
+href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
+
 Download for Windows
+
 </a>
 
 <a class="btn secondary" href="#features">
 View Features
 </a>
+
 </div>
 
 </div>
+
 </section>
 
 <section id="features">
+
 <div class="container">
 
 <h2 class="section-title">Core Features</h2>
@@ -242,85 +216,97 @@ View Features
 <div class="features">
 
 <div class="card">
-<h3>Production Workflow</h3>
+<h3>Video Processing</h3>
 <p>
-Organize and run your desktop production process in a more structured and efficient way.
+Process videos automatically using FFmpeg including portrait, landscape,
+and multi-format outputs.
 </p>
 </div>
 
 <div class="card">
-<h3>Video Source Processing</h3>
+<h3>YouTube & Offline Sources</h3>
 <p>
-Import online sources or local video files and manage them directly inside your workflow.
+Import YouTube videos or local files and transform them into ready-to-publish content.
 </p>
 </div>
 
 <div class="card">
-<h3>Desktop Control</h3>
+<h3>Publishing Workflow</h3>
 <p>
-Keep your workflow local with a stable desktop environment designed for direct control.
+Schedule and manage multi-account publishing workflows.
 </p>
 </div>
 
 <div class="card">
-<h3>Workspace Ready</h3>
+<h3>GNX Workspace</h3>
 <p>
-A practical production workspace for media generation, organization, and scheduling.
+Structured desktop workspace designed for media automation pipelines.
 </p>
 </div>
 
 </div>
 
 </div>
+
 </section>
 
 <section id="download">
+
 <div class="container">
 
 <h2 class="section-title">Download</h2>
 
 <div class="download">
+
 <p>
-GNX Production is currently available as a Windows desktop application.
-</p>
-<p>
-Installer and release access will be published on this page.
+GNX Production Desktop v0.1 for Windows
 </p>
 
 <br>
 
-<a class="btn primary" href="#">
+<a class="btn primary"
+href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
+
 Download Installer
+
 </a>
+
 </div>
 
 </div>
+
 </section>
 
 <section id="about">
+
 <div class="container">
 
 <h2 class="section-title">About</h2>
 
 <div class="download">
-<p><b>Brand</b> : GNX Production</p>
+
+<p><b>Product</b> : GNX Production Desktop</p>
 <p><b>Type</b> : Desktop Application</p>
 <p><b>Platform</b> : Windows</p>
 <p><b>Status</b> : Active Development</p>
+
 </div>
 
 </div>
+
 </section>
 
 <footer>
+
 © 2026 GNX Production
 
 <br><br>
 
 <a href="/privacy.html">Privacy Policy</a> |
-<a href="/terms.html">Terms of Service</a> |
+<a href="/terms.html">Terms</a> |
 <a href="/license.html">License</a> |
 <a href="/ai-disclaimer.html">AI Disclaimer</a>
+
 </footer>
 
 </body>

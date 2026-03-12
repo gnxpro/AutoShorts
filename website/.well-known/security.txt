@@ -1,0 +1,6 @@
+Contact: mailto:security@gnxproduction.com
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://studio.generalexplorerproduction.workers.dev/.well-known/security.txt
+Policy: https://studio.generalexplorerproduction.workers.dev/security.html
+Hiring: https://studio.generalexplorerproduction.workers.dev

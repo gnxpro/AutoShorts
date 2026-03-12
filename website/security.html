@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Policy | GNX Production</title>
+
+<style>
+body{
+font-family:Segoe UI, Arial;
+background:#0b0f1a;
+color:white;
+padding:60px 20px;
+line-height:1.7;
+}
+
+.container{
+max-width:900px;
+margin:auto;
+}
+
+h1{
+margin-bottom:20px;
+}
+
+h2{
+margin-top:30px;
+margin-bottom:10px;
+}
+
+p{
+opacity:0.85;
+}
+
+ul{
+margin-left:20px;
+opacity:0.85;
+}
+
+footer{
+margin-top:40px;
+opacity:0.6;
+font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Security Policy</h1>
+
+<p>
+This document explains the security practices used by GNX Production Desktop.
+</p>
+
+<h2>Application Architecture</h2>
+
+<p>
+GNX Production Desktop is primarily a local desktop application. Most processing tasks,
+including video processing and workflow management, occur directly on the user's device.
+</p>
+
+<h2>Local Data Storage</h2>
+
+<ul>
+<li>Configuration files are stored locally on the user's machine.</li>
+<li>Authentication tokens for connected services remain on the user's device.</li>
+<li>No centralized database is used for storing user credentials.</li>
+</ul>
+
+<h2>Data Transmission</h2>
+
+<p>
+When users connect third-party services (such as media platforms or storage providers),
+communication occurs directly between the user's application and the service using secure HTTPS connections.
+</p>
+
+<h2>Access Control</h2>
+
+<p>
+All integrations with third-party platforms require explicit user authorization.
+The application only performs actions requested by the user.
+</p>
+
+<h2>Third-Party APIs</h2>
+
+<p>
+GNX Production may integrate with external APIs for publishing workflows, media uploads,
+or content management. These integrations follow the authentication and security
+requirements defined by the respective platforms.
+</p>
+
+<h2>Security Updates</h2>
+
+<p>
+The application may periodically check for software updates in order to deliver
+security fixes and improvements.
+</p>
+
+<h2>Responsible Use</h2>
+
+<p>
+Users are responsible for protecting their local system and ensuring that the application
+is used in compliance with the policies of connected platforms.
+</p>
+
+<h2>Contact</h2>
+
+<p>
+For security-related questions or vulnerability reports, please contact GNX Production.
+</p>
+
+<footer>
+© 2026 GNX Production
+</footer>
+
+</div>
+
+</body>
+</html>

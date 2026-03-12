@@ -3,89 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Download | GNX Production</title>
+<title>Download GNX Production</title>
 
 <style>
 
 body{
-background:#0b0f1a;
+font-family:Arial;
+background:#0f172a;
 color:white;
-font-family:Segoe UI;
 text-align:center;
-padding:100px 20px;
-}
-
-.container{
-max-width:700px;
-margin:auto;
-}
-
-.logo{
-font-size:26px;
-font-weight:bold;
-margin-bottom:20px;
-}
-
-.logo span{
-color:#ff4d4d;
+padding:80px;
 }
 
 .btn{
-background:#ff4d4d;
-color:white;
-padding:16px 28px;
-border-radius:10px;
-text-decoration:none;
 display:inline-block;
+padding:20px 40px;
+background:#22c55e;
+color:black;
+font-size:18px;
 font-weight:bold;
-margin-top:30px;
+text-decoration:none;
+border-radius:10px;
+}
+
+.btn:hover{
+background:#16a34a;
 }
 
 </style>
-
 </head>
 
 <body>
 
-<div class="container">
+<h1>Download GNX Production Studio</h1>
 
-<div class="logo">
-<span>GNX</span> Production
-</div>
+<p>Latest version for Windows</p>
 
-<h1>Download GNX Production</h1>
+<br>
 
-<p style="opacity:0.8;">
-Latest desktop installer for Windows.
-</p>
+<a class="btn"
+href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
 
-<a class="btn" id="downloadBtn" href="#">
 Download Installer
+
 </a>
-
-<br><br>
-
-<a href="index.html" style="color:white;opacity:0.7;">
-← Back to Home
-</a>
-
-</div>
-
-<script>
-
-fetch("releases/version.json")
-.then(res => res.json())
-.then(data => {
-
-const btn = document.getElementById("downloadBtn");
-
-if(btn){
-btn.href = data.download_url;
-}
-
-});
-
-</script>
 
 </body>
 </html>

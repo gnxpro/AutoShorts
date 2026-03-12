@@ -3,128 +3,55 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GNX Production</title>
+<title>GNX Production Studio</title>
 
 <style>
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:Segoe UI, Arial, sans-serif;
-}
-
 body{
-background:#0b0f1a;
+font-family: Arial, sans-serif;
+background:#0f172a;
 color:white;
-line-height:1.6;
-}
-
-.container{
-width:90%;
-max-width:1200px;
-margin:auto;
-}
-
-header{
-padding:20px 0;
-border-bottom:1px solid rgba(255,255,255,0.08);
+margin:0;
 }
 
 nav{
 display:flex;
 justify-content:space-between;
-align-items:center;
-}
-
-.logo{
-font-size:24px;
-font-weight:bold;
-}
-
-.logo span{
-color:#ff4d4d;
+padding:20px;
+background:#020617;
 }
 
 nav a{
 color:white;
 text-decoration:none;
 margin-left:20px;
-font-size:14px;
-opacity:0.8;
 }
 
 .hero{
-padding:100px 0;
 text-align:center;
-}
-
-.hero h1{
-font-size:52px;
-margin-bottom:15px;
-}
-
-.hero p{
-max-width:700px;
-margin:auto;
-opacity:0.8;
-font-size:18px;
-}
-
-.buttons{
-margin-top:30px;
+padding:100px 20px;
 }
 
 .btn{
-padding:14px 26px;
-border-radius:10px;
-text-decoration:none;
-margin:8px;
 display:inline-block;
+padding:15px 30px;
+background:#22c55e;
+color:black;
 font-weight:bold;
+text-decoration:none;
+border-radius:8px;
+margin-top:20px;
 }
 
-.primary{
-background:#ff4d4d;
-color:white;
-}
-
-.secondary{
-border:1px solid rgba(255,255,255,0.2);
-color:white;
-}
-
-section{
-padding:80px 0;
-}
-
-.section-title{
-text-align:center;
-font-size:32px;
-margin-bottom:50px;
-}
-
-.download{
-text-align:center;
-background:#141b2d;
-padding:40px;
-border-radius:16px;
-max-width:600px;
-margin:auto;
+.btn:hover{
+background:#16a34a;
 }
 
 footer{
 text-align:center;
-padding:30px 0;
-margin-top:40px;
-opacity:0.6;
-font-size:14px;
-}
-
-footer a{
-color:white;
-margin:0 6px;
-text-decoration:none;
+padding:40px;
+background:#020617;
+margin-top:80px;
 }
 
 </style>
@@ -132,105 +59,39 @@ text-decoration:none;
 
 <body>
 
-<header>
-<div class="container">
-
 <nav>
-
-<div class="logo">
-<span>GNX</span> Production
-</div>
+<div>GNX Production</div>
 
 <div>
-<a href="#download">Download</a>
+<a href="index.html">Home</a>
+<a href="download.html">Download</a>
 <a href="docs.html">Docs</a>
-<a href="changelog.html">Changelog</a>
+<a href="privacy.html">Privacy</a>
 </div>
-
 </nav>
-
-</div>
-</header>
 
 <section class="hero">
 
-<div class="container">
-
-<h1>GNX Production</h1>
+<h1>GNX Production Studio</h1>
 
 <p>
-Desktop automation studio for media production workflows,
-video processing, and scalable publishing pipelines.
+AI Video Production Toolkit for Creators
 </p>
 
-<div class="buttons">
+<a class="btn"
+href="https://github.com/gnxpro/AutoShorts/releases/download/v0.1/GNX_Production_Studio_Setup_v0.1.exe">
 
-<a class="btn primary" id="downloadBtn" href="#">
 Download for Windows
+
 </a>
-
-<a class="btn secondary" href="download.html">
-Download Page
-</a>
-
-</div>
-
-</div>
-
-</section>
-
-<section id="download">
-
-<div class="container">
-
-<h2 class="section-title">Download</h2>
-
-<div class="download">
-
-<p>
-Latest version of GNX Production Desktop
-</p>
-
-<br>
-
-<a class="btn primary" id="downloadBtn2" href="#">
-Download Installer
-</a>
-
-</div>
-
-</div>
 
 </section>
 
 <footer>
 
-© 2026 GNX Production
-
-<br><br>
-
-<a href="/privacy.html">Privacy Policy</a> |
-<a href="/terms.html">Terms</a> |
-<a href="/license.html">License</a> |
-<a href="/ai-disclaimer.html">AI Disclaimer</a>
+GNX Production © 2026
 
 </footer>
-
-<script>
-
-fetch("releases/version.json")
-.then(res => res.json())
-.then(data => {
-
-const btn1 = document.getElementById("downloadBtn");
-const btn2 = document.getElementById("downloadBtn2");
-
-if(btn1) btn1.href = data.download_url;
-if(btn2) btn2.href = data.download_url;
-
-});
-
-</script>
 
 </body>
 </html>

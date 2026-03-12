@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GNX | AutoShorts AI Studio</title>
+<title>GNX Production</title>
 
 <style>
-
 *{
 margin:0;
 padding:0;
@@ -35,12 +34,15 @@ nav{
 display:flex;
 justify-content:space-between;
 align-items:center;
+flex-wrap:wrap;
+gap:12px;
 }
 
 .logo{
 font-size:24px;
 font-weight:bold;
 letter-spacing:1px;
+color:white;
 }
 
 .logo span{
@@ -55,6 +57,10 @@ font-size:14px;
 opacity:0.8;
 }
 
+nav a:hover{
+opacity:1;
+}
+
 .hero{
 padding:90px 0;
 text-align:center;
@@ -66,7 +72,7 @@ margin-bottom:15px;
 }
 
 .hero p{
-max-width:700px;
+max-width:760px;
 margin:auto;
 opacity:0.8;
 font-size:18px;
@@ -83,6 +89,7 @@ text-decoration:none;
 margin:8px;
 display:inline-block;
 font-weight:bold;
+transition:0.2s ease;
 }
 
 .primary{
@@ -90,9 +97,17 @@ background:#ff4d4d;
 color:white;
 }
 
+.primary:hover{
+background:#e63f3f;
+}
+
 .secondary{
 border:1px solid rgba(255,255,255,0.2);
 color:white;
+}
+
+.secondary:hover{
+background:rgba(255,255,255,0.06);
 }
 
 section{
@@ -132,18 +147,49 @@ text-align:center;
 background:#141b2d;
 padding:40px;
 border-radius:16px;
-max-width:600px;
+max-width:700px;
 margin:auto;
+border:1px solid rgba(255,255,255,0.05);
+}
+
+.download p{
+margin-bottom:10px;
+opacity:0.85;
 }
 
 footer{
 text-align:center;
 padding:30px 0;
 margin-top:40px;
-opacity:0.6;
+opacity:0.8;
 font-size:14px;
+border-top:1px solid rgba(255,255,255,0.08);
 }
 
+footer a{
+color:white;
+text-decoration:none;
+opacity:0.8;
+margin:0 6px;
+}
+
+footer a:hover{
+opacity:1;
+}
+
+@media (max-width: 768px){
+.hero h1{
+font-size:38px;
+}
+
+.hero p{
+font-size:16px;
+}
+
+nav a{
+margin-left:12px;
+}
+}
 </style>
 </head>
 
@@ -152,9 +198,8 @@ font-size:14px;
 <header>
 <div class="container">
 <nav>
-
 <div class="logo">
-<span>GNX</span> AutoShorts
+<span>GNX</span> Production
 </div>
 
 <div>
@@ -162,7 +207,6 @@ font-size:14px;
 <a href="#download">Download</a>
 <a href="#about">About</a>
 </div>
-
 </nav>
 </div>
 </header>
@@ -170,15 +214,14 @@ font-size:14px;
 <section class="hero">
 <div class="container">
 
-<h1>AutoShorts AI Studio</h1>
+<h1>GNX Production</h1>
 
 <p>
-Desktop workflow for AI video production and automated short-form content creation.
-Built for creators who want speed, structure, and full control of their production pipeline.
+Desktop workflow for AI video production, media processing, and structured content creation.
+Built for creators and production teams who want speed, control, and a clean local workflow.
 </p>
 
 <div class="buttons">
-
 <a class="btn primary" href="#">
 Download for Windows
 </a>
@@ -186,7 +229,6 @@ Download for Windows
 <a class="btn secondary" href="#features">
 View Features
 </a>
-
 </div>
 
 </div>
@@ -200,30 +242,30 @@ View Features
 <div class="features">
 
 <div class="card">
-<h3>AI Production Workflow</h3>
+<h3>Production Workflow</h3>
 <p>
-Streamline short-form content creation with an integrated desktop production workflow.
+Organize and run your desktop production process in a more structured and efficient way.
 </p>
 </div>
 
 <div class="card">
 <h3>Video Source Processing</h3>
 <p>
-Import YouTube URLs or local video files and process them directly inside the workspace.
+Import online sources or local video files and manage them directly inside your workflow.
 </p>
 </div>
 
 <div class="card">
 <h3>Desktop Control</h3>
 <p>
-Operate the full production pipeline locally with a stable desktop environment.
+Keep your workflow local with a stable desktop environment designed for direct control.
 </p>
 </div>
 
 <div class="card">
-<h3>GNX Production Workspace</h3>
+<h3>Workspace Ready</h3>
 <p>
-Professional workspace designed for structured AI video generation and scheduling.
+A practical production workspace for media generation, organization, and scheduling.
 </p>
 </div>
 
@@ -233,15 +275,16 @@ Professional workspace designed for structured AI video generation and schedulin
 </section>
 
 <section id="download">
-
 <div class="container">
 
 <h2 class="section-title">Download</h2>
 
 <div class="download">
-
 <p>
-AutoShorts AI Studio is currently available as a Windows desktop application.
+GNX Production is currently available as a Windows desktop application.
+</p>
+<p>
+Installer and release access will be published on this page.
 </p>
 
 <br>
@@ -249,38 +292,28 @@ AutoShorts AI Studio is currently available as a Windows desktop application.
 <a class="btn primary" href="#">
 Download Installer
 </a>
-
 </div>
 
 </div>
-
 </section>
 
 <section id="about">
-
 <div class="container">
 
 <h2 class="section-title">About</h2>
 
 <div class="download">
-
-<p><b>Product</b> : AutoShorts AI Studio</p>
 <p><b>Brand</b> : GNX Production</p>
 <p><b>Type</b> : Desktop Application</p>
 <p><b>Platform</b> : Windows</p>
 <p><b>Status</b> : Active Development</p>
-
 </div>
 
 </div>
-
 </section>
 
 <footer>
-
-<footer>
-
-© 2026 GNX Production — AutoShorts AI Studio
+© 2026 GNX Production
 
 <br><br>
 
@@ -288,9 +321,6 @@ Download Installer
 <a href="/terms.html">Terms of Service</a> |
 <a href="/license.html">License</a> |
 <a href="/ai-disclaimer.html">AI Disclaimer</a>
-
-</footer>
-
 </footer>
 
 </body>

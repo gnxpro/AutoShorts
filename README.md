@@ -17,8 +17,11 @@ GNX PRO – AI STUDIO is a desktop automation studio for video processing:
 ---
 
 ## 2) Setup (Developer)
+
 ### Create/activate venv
+
 **If you use `venv`:**
+
 ```powershell
 cd C:\Users\GenEx\Desktop\AutoShorts
 python -m venv venv

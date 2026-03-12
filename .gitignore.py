@@ -5,15 +5,15 @@ __pycache__/
 *.py[cod]
 *.pyd
 *.so
-*.egg-info/
 *.egg
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .cache/
 
 # =========================
-# Virtualenv
+# Virtual Environments
 # =========================
 venv/
 .venv/
@@ -21,7 +21,7 @@ env/
 ENV/
 
 # =========================
-# OS / Editor
+# OS / Editor files
 # =========================
 .DS_Store
 Thumbs.db
@@ -31,14 +31,14 @@ desktop.ini
 *.swp
 
 # =========================
-# Secrets / Env
+# Environment / Secrets
 # =========================
 .env
 .env.*
 .env.example
 
 # =========================
-# Runtime outputs (DO NOT COMMIT)
+# Runtime Outputs (never commit)
 # =========================
 outputs/
 temp/
@@ -48,21 +48,21 @@ logs/
 *.log
 
 # =========================
-# Build artifacts (PyInstaller)
+# Build Artifacts (PyInstaller)
 # =========================
 build/
 dist/
 *.spec.bak
 
 # =========================
-# Installer outputs
+# Installer Outputs
 # =========================
 release/
 *.exe
 *.msi
 
 # =========================
-# Media / Large files
+# Large Media Files
 # =========================
 *.mp4
 *.mov
@@ -72,28 +72,35 @@ release/
 *.m4v
 *.wav
 *.mp3
+
+# Images (ignored by default)
 *.png
 *.jpg
 *.jpeg
+
+# Archives
 *.zip
 *.7z
 
-# Keep essential small UI assets if needed:
+# =========================
+# Allow essential UI assets
+# =========================
+!assets/
 !assets/*.ico
 !assets/*.png
 !assets/*.jpg
 !assets/*.jpeg
 
-# If you store ffmpeg binaries locally:
+# Optional local ffmpeg binary
 assets/ffmpeg/
 
 # =========================
-# Local DB / user data
+# Local Database / User Data
 # =========================
 *.sqlite
 *.db
 
 # =========================
-# Windows appdata (never commit)
+# Local Windows AppData
 # =========================
 GNX_PRODUCTION/

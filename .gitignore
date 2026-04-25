@@ -1,0 +1,44 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# build & release
+dist/
+build/
+release/
+
+# runtime
+outputs/
+temp*/
+logs/
+
+# secrets
+.env
+.env.*
+
+# binaries / large
+assets/ffmpeg/
+*.exe
+*.dll
+*.zip
+*.7z
+*.mp4
+*.mov
+*.mkv
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
+
+# custom sensitive
+client_secret.json
+tokens/
+config/*.json
+core/*.json
+production_queue.json
+_BACKUP_SYSTEM_LAMA/
+data/tokens/

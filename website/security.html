@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Policy - GNX Studio</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --bg-card: #0D0D0D;
+            --text: #FFFFFF;
+            --muted: #AAAAAA;
+            --red: #FF0000;
+            --border: #222222;
+            --font-main: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.8;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: var(--muted);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .back-link:hover {
+            color: var(--red);
+        }
+
+        h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin: 0 0 10px 0;
+            letter-spacing: -1px;
+            border-bottom: 2px solid var(--red);
+            display: inline-block;
+            padding-bottom: 5px;
+        }
+
+        h2 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 40px;
+            color: var(--text);
+        }
+
+        p, li {
+            color: var(--muted);
+            font-size: 16px;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        .highlight-box {
+            background-color: var(--bg-card);
+            border-left: 4px solid var(--red);
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 4px;
+        }
+
+        footer {
+            margin-top: 80px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 13px;
+            border-top: 1px solid var(--border);
+            padding-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="index.html" class="back-link">← Back to Home</a>
+    <br>
+    <h1>Security Policy</h1>
+    
+    <p style="margin-top: 20px;">This document outlines the security practices and architecture of the **GNX Studio** desktop application.</p>
+
+    <div class="highlight-box">
+        <h2>Local-First Architecture</h2>
+        <p>GNX Studio is built as a local-first application. This means the majority of sensitive data processing, video rendering, and credential storage happens directly on your machine, not on our servers.</p>
+    </div>
+
+    <h2>Data Storage & Encryption</h2>
+    <ul>
+        <li><strong>Local Storage:</strong> Authentication tokens (OAuth) and session data are stored locally in the application's secure directory.</li>
+        <li><strong>No Central Database:</strong> We do not maintain a central database of your social media credentials.</li>
+        <li><strong>Configuration:</strong> Your project settings and API configurations remain under your physical control.</li>
+    </ul>
+
+    <h2>Secure Transmission</h2>
+    <p>All communication between GNX Studio and third-party APIs (Google, Meta, TikTok) is conducted over encrypted **HTTPS (TLS)** connections. Your data is protected in transit during every upload or sync operation.</p>
+
+    <h2>Access Control</h2>
+    <p>Integration with external platforms requires explicit user authorization via standard OAuth screens. GNX Studio only performs actions (like uploading or scheduling) that are initiated or configured by the user within the application interface.</p>
+
+    <h2>Vulnerability Reporting</h2>
+    <p>If you discover a security vulnerability, please contact us immediately at: <a href="mailto:generalexplorerproduction@gmail.com" style="color: var(--red); text-decoration: none; font-weight: 600;">generalexplorerproduction@gmail.com</a></p>
+
+    <footer>
+        © 2026 GNX Studio | Property of General Explorer Production
+    </footer>
+</div>
+
+</body>
+</html>

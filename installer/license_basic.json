@@ -1,0 +1,11 @@
+{
+  "plan": "BASIC",
+  "allow_youtube": true,
+  "allow_ai": false,
+  "allow_schedule": false,
+  "max_accounts": 2,
+  "daily_video_limit": 2,
+  "monthly_video_limit": 60,
+  "quality_options": ["480p"],
+  "default_quality": "480p"
+}

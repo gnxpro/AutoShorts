@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GNX Production Studio | Enterprise Workspace</title>
+    
+    <meta name="google-site-verification" content="google0f12b2d98198e787.html" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #000000;
+            --bg-card: #0D0D0D;
+            --primary-red: #FF0000;
+            --text-main: #FFFFFF;
+            --text-muted: #888888;
+            --border: #222222;
+            --font-main: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        .container { max-width:1200px; margin:auto; padding:0 20px; }
+        nav { position:sticky; top:0; z-index:50; backdrop-filter:blur(10px); background:rgba(5,5,5,0.8); border-bottom:1px solid var(--stroke); }
+        .nav-inner { display:flex; justify-content:space-between; align-items:center; padding:20px 0; }
+        .nav-brand { display:flex; align-items:center; gap:12px; font-weight:800; }
+        .nav-logo { width:12px; height:12px; border-radius:3px; background:var(--red); box-shadow:0 0 15px var(--red); }
+        
+        /* Hero */
+        .hero { padding:100px 0 60px; text-align:center; }
+        .kicker { display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border:1px solid var(--stroke); border-radius:100px; font-size:13px; font-weight:600; margin-bottom:30px; }
+        .kicker-dot { width:8px; height:8px; border-radius:50%; background:var(--red); }
+        h1 { font-size:72px; font-weight:800; letter-spacing:-3px; line-height:1; margin-bottom:24px; }
+        .hero p { font-size:20px; color:var(--muted); max-width:700px; margin:0 auto 40px; }
+        
+        .btn { padding:18px 32px; border-radius:14px; font-weight:700; transition:.2s; border:none; cursor:pointer; font-size:16px; }
+        .btn-red { background:var(--red); color:#fff; }
+        .btn-red:hover { background:var(--red-hover); transform:translateY(-2px); }
+
+        /* Privacy Policy for YouTube Verification */
+        .section-legal { padding:60px 0; border-top:1px solid var(--stroke); }
+        .legal-card { background:var(--panel); border:1px solid var(--stroke); border-radius:24px; padding:40px; text-align:left; }
+        .legal-card h2 { font-size:28px; margin-bottom:20px; }
+        .legal-card p { color:var(--muted); margin-bottom:15px; font-size:16px; }
+
+        footer { padding:40px 0; text-align:center; color:var(--muted); border-top:1px solid var(--stroke); font-size:14px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container">
+        <nav>
+            <a href="index.html" class="logo"><div class="logo-dot"></div>GNX Studio</a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="privacy.html">Privacy</a>
+                <a href="terms.html">Terms</a>
+            </div>
+            <a href="https://generalexplorer.lemonsqueezy.com/" class="btn-download" target="_blank">Access Now</a>
+        </nav>
+    </div>
+</header>
+
+<section class="hero container">
+    <div class="kicker"><div class="kicker-dot"></div><span>Google Verified Workflow</span></div>
+    <h1>GNX Workspace</h1>
+    <p>The all-in-one desktop environment for AI video production, smart scheduling, and YouTube Shorts automation.</p>
+    <button class="btn btn-red">Download for Windows</button>
+</section>
+
+<div class="features" id="features">
+    <div class="container">
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">⚙️</div>
+                <h3>Mass Production</h3>
+                <p>Automate video slicing, rendering, and processing using local engine adapters.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">☁️</div>
+                <h3>Cloud Sync</h3>
+                <p>Securely connect YouTube, Facebook, Instagram, and TikTok via unified API gateway.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>AI Enhanced</h3>
+                <p>Built-in AI services for content optimization and pipeline management.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <div class="container">
+        <div class="footer-logo"><div class="logo-dot"></div>GNX Studio</div>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="mailto:gnx@gnxpro.my.id">Support</a>
+        </div>
+        <div class="copyright">© 2026 GNX Studio | PT GENERAL EXPLORER SMART SYSTEM</div>
+    </div>
+</footer>
+
+</body>
+</html>

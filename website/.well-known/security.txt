@@ -1,0 +1,5 @@
+Contact: mailto:generalexplorerproduction@gmail.com
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: en, id
+Canonical: https://gnxpro.my.id/.well-known/security.txt
+Policy: https://gnxpro.my.id/security.html

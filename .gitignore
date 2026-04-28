@@ -1,24 +1,35 @@
+# ==========================================
+# GNX STUDIO - .gitignore
+# ==========================================
+
 # Python
 venv/
 .venv/
 __pycache__/
 *.pyc
 
-# build & release
+# Build & Release
 dist/
 build/
 release/
+GNX_RELEASES/
+installer_output/
 
-# runtime
+# Runtime & Outputs
 outputs/
 temp*/
 logs/
+downloads/
 
-# secrets
+# Secrets & API Keys
 .env
 .env.*
+set_gemini.py
+set_cloudinary.py
+test_gemini.py
+client_secret.json
 
-# binaries / large
+# Binaries & Large Media
 assets/ffmpeg/
 *.exe
 *.dll
@@ -27,18 +38,23 @@ assets/ffmpeg/
 *.mp4
 *.mov
 *.mkv
+*.mp3
+*.wav
 
-# wrangler files
+# Wrangler / Cloudflare
 .wrangler
 .dev.vars*
 !.dev.vars.example
 !.env.example
 
-# custom sensitive
-client_secret.json
+# Custom Sensitive Data
 tokens/
+data/tokens/
 config/*.json
 core/*.json
 production_queue.json
 _BACKUP_SYSTEM_LAMA/
-data/tokens/
+
+# OS Generated
+.DS_Store
+Thumbs.db
